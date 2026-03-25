@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+
+# Environment
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Airflow
+airflow/logs/
+airflow/plugins/__pycache__/
+
+# dbt
+dbt/iot_pipeline/target/
+dbt/iot_pipeline/dbt_packages/
+dbt/iot_pipeline/logs/
+
+# Lambda
+lambda/package/
+lambda/*.zip
+
+# Terraform (if added later)
+*.tfstate
+*.tfstate.backup
+.terraform/
