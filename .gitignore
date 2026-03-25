@@ -39,3 +39,4 @@ lambda/*.zip
 *.tfstate
 *.tfstate.backup
 .terraform/
+.instance-info
