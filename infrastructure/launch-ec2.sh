@@ -22,10 +22,8 @@ echo "  Region:   ${REGION}"
 echo "============================================"
 echo ""
 
-# --- Get your public IP for security group ---
-echo "[1/7] Detecting your public IP..."
-MY_IP=$(curl -s https://checkip.amazonaws.com)
-echo "       Your IP: ${MY_IP}"
+# --- Note: Security group open to all IPs (dynamic IP friendly) ---
+echo "[1/7] Security group will allow all IPs (SSH + Airflow UI)..."
 
 # --- Find latest Ubuntu 24.04 ARM64 AMI ---
 echo "[2/7] Finding Ubuntu 24.04 ARM64 AMI..."
@@ -76,23 +74,23 @@ if [ "${SG_ID}" = "None" ] || [ -z "${SG_ID}" ]; then
         --query 'GroupId' \
         --output text)
 
-    # SSH access — your IP only
+    # SSH access — open (dynamic IP friendly)
     aws ec2 authorize-security-group-ingress \
         --group-id "${SG_ID}" \
         --protocol tcp \
         --port 22 \
-        --cidr "${MY_IP}/32" \
+        --cidr "0.0.0.0/0" \
         --region "${REGION}"
 
-    # Airflow UI — your IP only
+    # Airflow UI — open (protected by Airflow login)
     aws ec2 authorize-security-group-ingress \
         --group-id "${SG_ID}" \
         --protocol tcp \
         --port 8080 \
-        --cidr "${MY_IP}/32" \
+        --cidr "0.0.0.0/0" \
         --region "${REGION}"
 
-    echo "       Created: ${SG_ID} (SSH + 8080 from ${MY_IP})"
+    echo "       Created: ${SG_ID} (SSH + 8080 open to all)"
 else
     echo "       Exists: ${SG_ID}"
 fi
