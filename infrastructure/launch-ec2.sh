@@ -164,3 +164,4 @@ echo ""
 echo "  To terminate (delete everything):"
 echo "     aws ec2 terminate-instances --instance-ids ${INSTANCE_ID}"
 echo ""
+# --- instance id: i-01182aa00d50da692 ---
