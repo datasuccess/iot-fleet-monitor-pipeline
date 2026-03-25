@@ -136,6 +136,8 @@ Username: airflow
 Password: airflow
 ```
 
+http://52.23.158.127:8080/home
+
 ## Get Public IP (from inside EC2)
 
 ```bash
