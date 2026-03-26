@@ -12,10 +12,22 @@ x-airflow-common: &airflow-common
     AIRFLOW__WEBSERVER__WORKERS: "2"
     AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: "60"
     AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "60"
+    # Snowflake connection (used by DAG tasks and Cosmos)
+    SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT:-}
+    SNOWFLAKE_USER: ${SNOWFLAKE_USER:-}
+    SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD:-}
+    SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-IOT_TRANSFORMER}
+    SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-IOT_WH}
+    SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-IOT_PIPELINE}
+    # AWS credentials (used by Lambda invocation)
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
+    - ../dbt/iot_pipeline:/opt/airflow/dbt/iot_pipeline
   depends_on:
     postgres:
       condition: service_healthy

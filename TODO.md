@@ -32,13 +32,14 @@
 - [ ] **Verify**: Run scripts in Snowflake, configure IAM trust, test COPY INTO
 
 ## Phase 3: Basic Airflow DAG
-- [ ] `airflow/docker-compose.yml` — Postgres + Airflow standalone
-- [ ] `airflow/Dockerfile` — Based on apache/airflow:3.1.3-python3.11
-- [ ] `airflow/requirements.txt` — dbt-snowflake, boto3, providers
-- [ ] `airflow/dags/iot_pipeline_dag.py` — Minimal: trigger_lambda → load → validate
-- [ ] `airflow/dags/helpers/lambda_utils.py` — Lambda invocation with retry
-- [ ] `airflow/dags/helpers/snowflake_utils.py` — COPY INTO wrapper
-- [ ] **Verify**: `docker compose up`, trigger DAG, confirm RAW table populated
+- [x] `airflow/docker-compose.yml` — Postgres + Airflow + env vars + dbt volume mount
+- [x] `airflow/Dockerfile` — Based on apache/airflow:2.11.2-python3.11
+- [x] `airflow/requirements.txt` — dbt-snowflake, boto3, providers, astronomer-cosmos
+- [x] `airflow/dags/iot_pipeline_dag.py` — TaskFlow: trigger_lambda → load → validate + Params
+- [x] `airflow/dags/helpers/lambda_utils.py` — Lambda invocation with adaptive retry
+- [x] `airflow/dags/helpers/snowflake_utils.py` — Snowflake connector COPY INTO wrapper
+- [x] `airflow/.env.example` — Template for Snowflake + AWS credentials
+- [ ] **Verify**: Rebuild on EC2, configure .env, trigger DAG, confirm RAW table populated
 
 ## Phase 4: dbt Staging Models
 - [ ] `dbt/iot_pipeline/dbt_project.yml` — Project config
