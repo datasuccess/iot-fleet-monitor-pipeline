@@ -82,7 +82,8 @@ cd lambda
 rm -rf package lambda-deploy.zip
 
 # Install dependencies
-pip3 install -r requirements.txt --target package --quiet
+pip3 install -r requirements.txt --target package --quiet \
+    --platform manylinux2014_aarch64 --only-binary=:all:
 cp -r data_generator package/
 
 # Create zip
