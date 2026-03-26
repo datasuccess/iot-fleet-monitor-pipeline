@@ -12,13 +12,13 @@ Edit `airflow/.env` locally — fill in the 5 blank values:
 # .env is gitignored, so copy it manually to EC2
 scp -i ~/.ssh/iot-fleet-pipeline-key.pem \
   airflow/.env \
-  ubuntu@<EC2-IP>:/home/ubuntu/iot-pipeline/airflow/.env
+  ubuntu@52.23.158.127:/home/ubuntu/iot-pipeline/airflow/.env
 ```
 
 ## Step 3: Rebuild on EC2
 
 ```bash
-ssh -i ~/.ssh/iot-fleet-pipeline-key.pem ubuntu@<EC2-IP>
+ssh -i ~/.ssh/iot-fleet-pipeline-key.pem ubuntu@52.23.158.127
 
 cd /home/ubuntu/iot-pipeline
 git pull
@@ -40,7 +40,7 @@ All 3 services should show `healthy` or `running`.
 
 ## Step 5: Open Airflow UI
 
-Go to `http://<EC2-IP>:8080` — login: `airflow` / `airflow`
+Go to `http://52.23.158.127:8080` — login: `airflow` / `airflow`
 
 ## Step 6: Trigger the DAG
 
