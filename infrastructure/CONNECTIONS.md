@@ -13,20 +13,25 @@
 - **Instance Type**: t4g.small (ARM/Graviton)
 
 ## S3
-- **Bucket**: *(to be created in Phase 1)*
-- **Raw path**: `s3://<bucket>/sensor_readings/year=YYYY/month=MM/day=DD/hour=HH/`
-- **Iceberg path**: `s3://<bucket>/iceberg/iot_pipeline/`
+- **Bucket**: iot-fleet-monitor-data
+- **Raw path**: `s3://iot-fleet-monitor-data/sensor_readings/year=YYYY/month=MM/day=DD/hour=HH/`
+- **Iceberg path**: `s3://iot-fleet-monitor-data/iceberg/iot_pipeline/`
 
 ## Snowflake
-- **Account**: *(to be added in Phase 2)*
+- **Account**: swtivtz-cj19299
+- **Account Locator**: MM75901
+- **Region**: AWS_EU_CENTRAL_1
 - **Database**: IOT_PIPELINE
 - **Warehouse**: IOT_WH
+- **User**: DRONQO39
 - **Roles**: IOT_LOADER, IOT_TRANSFORMER, IOT_READER
 
 ## Lambda
-- **Function name**: *(to be created in Phase 1)*
+- **Function name**: iot-fleet-data-generator
 - **Region**: us-east-1
+- **Runtime**: Python 3.11 (ARM64)
 
 ## dbt
-- **Profile**: *(to be configured in Phase 4)*
+- **Profile**: iot_pipeline
 - **Project**: iot_pipeline
+- **Packages**: dbt_utils, dbt_expectations
