@@ -42,18 +42,18 @@
 - [ ] **Verify**: Rebuild on EC2, configure .env, trigger DAG, confirm RAW table populated
 
 ## Phase 4: dbt Staging Models
-- [ ] `dbt/iot_pipeline/dbt_project.yml` — Project config
-- [ ] `dbt/iot_pipeline/profiles.yml` — Snowflake connection
-- [ ] `dbt/iot_pipeline/packages.yml` — dbt_utils, dbt_expectations
-- [ ] `dbt/iot_pipeline/models/staging/_sources.yml` — Source definitions + freshness
-- [ ] `dbt/iot_pipeline/models/staging/_staging.yml` — dbt_expectations tests
-- [ ] `dbt/iot_pipeline/models/staging/stg_sensor_readings.sql` — Parse VARIANT with TRY_CAST
-- [ ] `dbt/iot_pipeline/models/staging/stg_device_metadata.sql` — Parse device metadata
-- [ ] `dbt/iot_pipeline/macros/generate_schema_name.sql` — Custom schema naming
-- [ ] `dbt/iot_pipeline/macros/parse_json_field.sql` — Safe VARIANT extraction macro
-- [ ] `dbt/iot_pipeline/seeds/device_registry.csv` — 50 devices reference data
-- [ ] `dbt/iot_pipeline/seeds/sensor_thresholds.csv` — Valid ranges per sensor type
-- [ ] **Verify**: `dbt run --select staging`, `dbt test --select staging`
+- [x] `dbt/iot_pipeline/dbt_project.yml` — Project config with schema mappings
+- [x] `dbt/iot_pipeline/profiles.yml` — Snowflake connection via env vars
+- [x] `dbt/iot_pipeline/packages.yml` — dbt_utils, dbt_expectations
+- [x] `dbt/iot_pipeline/models/staging/_sources.yml` — Source definitions + freshness (30m warn, 60m error)
+- [x] `dbt/iot_pipeline/models/staging/_staging.yml` — Contract + quality tests (dbt_expectations)
+- [x] `dbt/iot_pipeline/models/staging/stg_sensor_readings.sql` — Parse VARIANT with TRY_CAST
+- [x] `dbt/iot_pipeline/models/staging/stg_device_metadata.sql` — Latest metadata per device (window function)
+- [x] `dbt/iot_pipeline/macros/generate_schema_name.sql` — Custom schema naming (no prefix)
+- [x] `dbt/iot_pipeline/macros/parse_json_field.sql` — Safe VARIANT extraction macro
+- [x] `dbt/iot_pipeline/seeds/device_registry.csv` — 50 devices reference data
+- [x] `dbt/iot_pipeline/seeds/sensor_thresholds.csv` — Valid ranges per sensor type
+- [ ] **Verify**: `dbt seed`, `dbt run --select staging`, `dbt test --select staging`
 
 ## Phase 5: dbt Intermediate + Marts + Snapshots
 - [ ] `dbt/iot_pipeline/models/intermediate/int_readings_deduped.sql` — Incremental dedup

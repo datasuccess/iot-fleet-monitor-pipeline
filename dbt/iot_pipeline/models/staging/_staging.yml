@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: stg_sensor_readings
+    description: "Parsed sensor readings from raw VARIANT JSON into typed columns"
+    columns:
+      - name: reading_id
+        description: "Unique reading identifier (UUID)"
+        tests:
+          - not_null
+          - unique
+
+      - name: device_id
+        description: "Device identifier (DEV_001 through DEV_050)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('device_registry')
+              field: device_id
+
+      - name: reading_ts
+        description: "Timestamp when the reading was taken"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_of_type:
+              column_type: timestamp_ntz
+
+      - name: temperature
+        description: "Temperature in °C (may be null from error injection)"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -50
+              max_value: 120
+              mostly: 0.90
+              row_condition: "temperature is not null"
+
+      - name: humidity
+        description: "Relative humidity in %"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -10
+              max_value: 150
+              mostly: 0.90
+              row_condition: "humidity is not null"
+
+      - name: pressure
+        description: "Atmospheric pressure in hPa"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 800
+              max_value: 1200
+              mostly: 0.90
+              row_condition: "pressure is not null"
+
+      - name: battery_pct
+        description: "Battery percentage"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -5
+              max_value: 110
+              mostly: 0.90
+              row_condition: "battery_pct is not null"
+
+      - name: latitude
+        description: "GPS latitude"
+
+      - name: longitude
+        description: "GPS longitude"
+
+      - name: firmware_version
+        description: "Device firmware version"
+
+      - name: error_profile
+        description: "Error profile used for this batch"
+        tests:
+          - accepted_values:
+              values: ['none', 'normal', 'high', 'chaos']
+              quote: true
+
+      - name: loaded_at
+        description: "When this row was loaded into Snowflake"
+        tests:
+          - not_null
+
+      - name: source_file
+        description: "S3 file path"
+
+  - name: stg_device_metadata
+    description: "Device metadata extracted from raw readings"
+    columns:
+      - name: device_id
+        description: "Unique device identifier"
+        tests:
+          - not_null
+          - unique
+
+      - name: firmware_version
+        description: "Latest firmware version seen"
+        tests:
+          - not_null

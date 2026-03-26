@@ -1,0 +1,13 @@
+iot_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'IOT_TRANSFORMER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'IOT_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'IOT_PIPELINE') }}"
+      schema: RAW
+      threads: 4

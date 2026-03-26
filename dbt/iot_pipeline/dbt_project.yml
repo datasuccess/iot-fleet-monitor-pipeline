@@ -1,0 +1,31 @@
+name: 'iot_pipeline'
+version: '1.0.0'
+
+profile: 'iot_pipeline'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+seeds:
+  iot_pipeline:
+    +schema: staging
+
+models:
+  iot_pipeline:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: incremental
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts

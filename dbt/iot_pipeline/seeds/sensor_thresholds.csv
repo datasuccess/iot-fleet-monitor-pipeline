@@ -1,0 +1,5 @@
+sensor_type,min_valid,max_valid,warning_low,warning_high,critical_low,critical_high
+temperature,-20,60,-10,50,-20,60
+humidity,10,95,15,90,10,95
+pressure,950,1050,960,1040,950,1050
+battery,0,100,15,100,5,100
