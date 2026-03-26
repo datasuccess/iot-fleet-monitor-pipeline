@@ -31,7 +31,7 @@ CREATE EXTERNAL VOLUME IF NOT EXISTS iot_iceberg_volume
             NAME = 'iot-iceberg-s3'
             STORAGE_BASE_URL = 's3://iot-fleet-monitor-data/iceberg/'
             STORAGE_PROVIDER = 'S3'
-            STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/iot-fleet-snowflake-role'
+            STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::497162053528:role/iot-fleet-snowflake-role'
         )
     );
 
