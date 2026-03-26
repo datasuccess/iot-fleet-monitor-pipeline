@@ -8,27 +8,28 @@
 ---
 
 ## Phase 1: Lambda Data Generator + S3
-- [ ] `lambda/data_generator/config.py` — Device count, sensor ranges, 4 error profiles
-- [ ] `lambda/data_generator/models.py` — Pydantic v2 models for sensor readings
-- [ ] `lambda/data_generator/devices.py` — 50-device fleet registry across 5 clusters
-- [ ] `lambda/data_generator/sensors.py` — Random walk time-series generators
-- [ ] `lambda/data_generator/errors.py` — Error injection (nulls, OOR, dupes, late arrivals)
-- [ ] `lambda/data_generator/handler.py` — Lambda entry point, writes partitioned JSON to S3
-- [ ] `lambda/deploy.sh` — S3 bucket + IAM role + Lambda deployment script
-- [ ] `lambda/requirements.txt` — pydantic, boto3
-- [ ] `lambda/tests/test_generator.py` — Local unit tests
-- [ ] **Verify**: Invoke locally, confirm S3 partitioning `year=/month=/day=/hour=`
+- [x] `lambda/data_generator/config.py` — Device count, sensor ranges, 4 error profiles
+- [x] `lambda/data_generator/models.py` — Pydantic v2 models for sensor readings
+- [x] `lambda/data_generator/devices.py` — 50-device fleet registry across 5 clusters
+- [x] `lambda/data_generator/sensors.py` — Random walk time-series generators
+- [x] `lambda/data_generator/errors.py` — Error injection (nulls, OOR, dupes, late arrivals)
+- [x] `lambda/data_generator/handler.py` — Lambda entry point, writes partitioned JSON to S3
+- [x] `lambda/deploy.sh` — S3 bucket + IAM role + Lambda deployment script
+- [x] `lambda/requirements.txt` — pydantic, boto3
+- [x] `lambda/tests/test_generator.py` — Local unit tests (8/8 passing)
+- [ ] **Verify**: Deploy to AWS, invoke, confirm S3 partitioning
 
 ## Phase 2: Snowflake Setup
-- [ ] `snowflake/00_setup.sql` — Database, schemas (RAW/STAGING/INTERMEDIATE/MARTS/MONITORING), roles, warehouse
-- [ ] `snowflake/01_stages.sql` — Storage integration + external stage to S3
-- [ ] `snowflake/02_file_formats.sql` — JSON format with STRIP_OUTER_ARRAY
-- [ ] `snowflake/03_raw_tables.sql` — VARIANT-based raw tables
-- [ ] `snowflake/04_pipes.sql` — Snowpipe auto-ingest definitions
-- [ ] `snowflake/05_streams.sql` — CDC streams on raw tables
-- [ ] `snowflake/06_tasks.sql` — Autonomous freshness monitoring task
-- [ ] `snowflake/07_iceberg.sql` — Iceberg table setup for mart layer (external volume, catalog integration)
-- [ ] **Verify**: Run scripts, test manual COPY INTO, confirm objects exist
+- [x] `snowflake/00_setup.sql` — Database, schemas (RAW/STAGING/INTERMEDIATE/MARTS/MONITORING), roles, warehouse
+- [x] `snowflake/01_stages.sql` — Storage integration + external stage to S3
+- [x] `snowflake/02_file_formats.sql` — JSON format with STRIP_OUTER_ARRAY
+- [x] `snowflake/03_raw_tables.sql` — VARIANT-based raw tables + load audit log
+- [x] `snowflake/04_pipes.sql` — Snowpipe auto-ingest definitions
+- [x] `snowflake/05_streams.sql` — CDC streams on raw tables
+- [x] `snowflake/06_tasks.sql` — Autonomous freshness monitoring task
+- [x] `snowflake/07_iceberg.sql` — Iceberg external volume + table pattern for marts
+- [x] `snowflake/tests/test_integration.sql` — 12 integration tests
+- [ ] **Verify**: Run scripts in Snowflake, configure IAM trust, test COPY INTO
 
 ## Phase 3: Basic Airflow DAG
 - [ ] `airflow/docker-compose.yml` — Postgres + Airflow standalone
