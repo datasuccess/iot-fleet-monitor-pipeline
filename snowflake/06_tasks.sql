@@ -25,9 +25,9 @@ CREATE TABLE IF NOT EXISTS freshness_log (
     latest_loaded_at TIMESTAMP_NTZ,
     minutes_since_load FLOAT,
     is_fresh        BOOLEAN        COMMENT 'TRUE if data arrived within threshold',
-    threshold_minutes INTEGER      DEFAULT 60,
-    COMMENT = 'Automated freshness check results'
-);
+    threshold_minutes INTEGER      DEFAULT 60
+)
+COMMENT = 'Automated freshness check results';
 
 -- =====================
 -- 2. FRESHNESS CHECK TASK

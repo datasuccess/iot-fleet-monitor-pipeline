@@ -63,3 +63,8 @@ SHOW PIPES;
 --
 -- Force refresh (load files that were missed):
 --   ALTER PIPE sensor_readings_pipe REFRESH;
+
+
+-- DESC STORAGE INTEGRATION iot_s3_integration;
+
+-- LIST @RAW.raw_sensor_stage;
