@@ -20,7 +20,7 @@ from helpers.snowflake_utils import run_snowflake_query
 @dag(
     dag_id="iot_pipeline",
     description="IoT sensor data: Lambda → S3 → Snowflake → dbt",
-    schedule="*/5 * * * *",  # Every 5 minutes (matches sensor interval)
+    schedule="0 * * * *",  # Every hour at minute 0
     start_date=datetime(2026, 3, 26),
     catchup=False,
     max_active_runs=1,
