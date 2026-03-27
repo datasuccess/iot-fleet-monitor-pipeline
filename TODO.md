@@ -77,24 +77,28 @@
 - [ ] **Verify**: `dbt run`, `dbt test --store-failures`, `dbt snapshot`
 
 ## Phase 6: Full Airflow Orchestration
-- [ ] Update `iot_pipeline_dag.py` — @task.branch, @task.sensor, SLA, Params, callbacks
-- [ ] `airflow/dags/iot_monitoring_dag.py` — Hourly monitoring DAG
-- [ ] `airflow/dags/helpers/notify.py` — Success/failure callback functions
-- [ ] `airflow/dags/helpers/dbt_utils.py` — dbt subprocess wrapper
-- [ ] `airflow/plugins/sensors/s3_file_count_sensor.py` — Custom S3 sensor
-- [ ] **Verify**: Trigger with different Params, verify branching + SLA
+- [x] Update `iot_pipeline_dag.py` — Cosmos DbtTaskGroup, @task.branch, SLA, Params, callbacks
+- [x] `airflow/dags/iot_monitoring_dag.py` — Hourly monitoring DAG (freshness, quality, anomalies)
+- [x] `airflow/dags/helpers/notify.py` — Success/failure/SLA miss callback functions
+- [x] `airflow/dags/helpers/dbt_utils.py` — dbt subprocess wrapper (Cosmos fallback)
+- [x] `airflow/plugins/sensors/s3_file_count_sensor.py` — Custom S3 file count sensor
+- [x] `airflow/EXPLAINED_PHASE6.md` — Cosmos, branching, trigger rules, SLA explained
+- [ ] **Verify**: Rebuild on EC2, trigger with different Params, verify branching + SLA
 
 ## Phase 7: Monitoring & Data Quality Framework
-- [ ] `monitoring/dashboards/quality_dashboard.sql` — Snowsight queries
-- [ ] `monitoring/alerts/alert_rules.yml` — Threshold configs
-- [ ] `dbt/iot_pipeline/macros/test_row_count_anomaly.sql` — Custom generic test
-- [ ] `.pre-commit-config.yaml` — sqlfluff + ruff
-- [ ] `.sqlfluff` — Snowflake dialect config
-- [ ] `.env.example` — Environment variable template
-- [ ] `scripts/run_daily.sh` — Daily trigger script
+- [x] `monitoring/dashboards/quality_dashboard.sql` — 8 Snowsight-ready queries
+- [x] `monitoring/alerts/alert_rules.yml` — Threshold configs (warn + critical)
+- [x] `monitoring/EXPLAINED.md` — Observability, alerting, quality scoring explained
+- [x] `dbt/iot_pipeline/macros/test_row_count_anomaly.sql` — Custom generic test (7-day avg deviation)
+- [x] `.pre-commit-config.yaml` — sqlfluff + ruff + detect-secrets
+- [x] `.sqlfluff` — Snowflake dialect, dbt templater, 120 char limit
+- [x] `.env.example` — All environment variables template
+- [x] `scripts/run_daily.sh` — Trigger DAG with error profile
 - [ ] **Verify**: Run pre-commit, trigger with `chaos`, verify alerts
 
 ## Phase 8: 5-Day Production Run
+- [x] `scripts/production_run.sh` — Day selector script (1-5 with profile mapping)
+- [x] `scripts/review_production_run.sh` — Post-run review SQL queries
 - [ ] Day 1 — `none` profile, establish baseline
 - [ ] Day 2 — `normal` profile, observe quality catches
 - [ ] Day 3 — `high` profile, stress test + alerts

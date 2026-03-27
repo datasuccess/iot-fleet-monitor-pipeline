@@ -1,34 +1,53 @@
 """
-IoT Fleet Monitor Pipeline DAG — Phase 3 (minimal version)
+IoT Fleet Monitor Pipeline DAG - Phase 6
+Uses TaskFlow API with Cosmos dbt integration.
 
-Flow: trigger_lambda → wait → load_to_snowflake → validate_load
-
-dbt integration via Cosmos will be added in Phase 4-6.
+Flow: trigger_lambda -> load_to_snowflake -> validate_load -> branch_on_quality
+      -> [run_dbt_models OR skip_dbt] -> log_completion
 """
 
 import json
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from airflow.decorators import dag, task
 from airflow.models.param import Param
+from airflow.utils.trigger_rule import TriggerRule
+from cosmos import (
+    DbtTaskGroup,
+    ExecutionConfig,
+    ProfileConfig,
+    ProjectConfig,
+    RenderConfig,
+)
 
 from helpers.lambda_utils import invoke_lambda
+from helpers.notify import on_failure_callback, on_success_callback
 from helpers.snowflake_utils import run_snowflake_query
+
+DBT_PROJECT_PATH = "/opt/airflow/dbt/iot_pipeline"
+DBT_PROFILES_PATH = Path(DBT_PROJECT_PATH) / "profiles.yml"
+DBT_EXECUTABLE_PATH = "/home/airflow/.local/bin/dbt"
+
+default_args = {
+    "owner": "data-engineering",
+    "retries": 2,
+    "retry_delay": timedelta(minutes=1),
+    "sla": timedelta(minutes=45),
+    "on_failure_callback": on_failure_callback,
+}
 
 
 @dag(
     dag_id="iot_pipeline",
-    description="IoT sensor data: Lambda → S3 → Snowflake → dbt",
-    schedule="0 * * * *",  # Every hour at minute 0
-    start_date=datetime(2026, 3, 26),
+    description="IoT sensor data: Lambda -> S3 -> Snowflake -> dbt (Cosmos)",
+    schedule="0 * * * *",
+    start_date=datetime(2024, 1, 1),
     catchup=False,
     max_active_runs=1,
-    default_args={
-        "owner": "data-engineering",
-        "retries": 2,
-        "retry_delay": timedelta(minutes=1),
-    },
+    default_args=default_args,
+    tags=["iot", "pipeline", "cosmos"],
     params={
         "error_profile": Param(
             default="none",
@@ -36,10 +55,16 @@ from helpers.snowflake_utils import run_snowflake_query
             enum=["none", "normal", "high", "chaos"],
             description="Error injection profile for data generation",
         ),
+        "run_dbt": Param(
+            default=True,
+            type="boolean",
+            description="Whether to run dbt models after loading",
+        ),
     },
-    tags=["iot", "pipeline"],
+    on_success_callback=on_success_callback,
 )
 def iot_pipeline():
+    """End-to-end IoT fleet monitoring pipeline with dbt via Cosmos."""
 
     @task()
     def trigger_lambda(**context) -> dict:
@@ -93,14 +118,72 @@ def iot_pipeline():
         print(f"Rows loaded in last 10 minutes: {row_count}")
 
         if row_count == 0:
-            raise ValueError("No rows loaded in the last 10 minutes!")
+            print("WARNING: No rows loaded in the last 10 minutes")
 
-        return {"rows_loaded_recent": row_count, "status": "validated"}
+        return {"row_count": row_count, "is_valid": row_count > 0}
 
-    # DAG flow: trigger → load → validate
+    @task.branch()
+    def branch_on_quality(validation_result: dict, **context) -> str:
+        """Branch based on data quality and run_dbt parameter."""
+        row_count = validation_result.get("row_count", 0)
+        run_dbt = context["params"].get("run_dbt", True)
+
+        if row_count > 0 and run_dbt:
+            print("Data valid and run_dbt=True -> running dbt models")
+            return "dbt_models.stg_sensor_readings_run"
+        else:
+            print(f"Skipping dbt (row_count={row_count}, run_dbt={run_dbt})")
+            return "skip_dbt"
+
+    @task()
+    def skip_dbt():
+        """Placeholder task when dbt is skipped."""
+        print("Skipping dbt transformations")
+
+    @task(trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS)
+    def log_completion(**context):
+        """Log pipeline completion summary."""
+        dag_run = context["dag_run"]
+        print("=" * 60)
+        print("IoT Fleet Monitor Pipeline - Run Complete")
+        print(f"  DAG Run ID: {dag_run.run_id}")
+        print(f"  Logical Date: {context['logical_date']}")
+        print(f"  Params: {context['params']}")
+        print("=" * 60)
+
+    # Wire up the task flow
     lambda_result = trigger_lambda()
     load_result = load_to_snowflake(lambda_result)
-    validate_load(load_result)
+    validation_result = validate_load(load_result)
+    branch_result = branch_on_quality(validation_result)
+
+    dbt_models = DbtTaskGroup(
+        group_id="dbt_models",
+        project_config=ProjectConfig(
+            dbt_project_path=DBT_PROJECT_PATH,
+        ),
+        profile_config=ProfileConfig(
+            profiles_yml_filepath=DBT_PROFILES_PATH,
+            target_name="dev",
+        ),
+        render_config=RenderConfig(
+            select=[
+                "path:models/staging",
+                "path:models/intermediate",
+                "path:models/marts",
+            ],
+        ),
+        execution_config=ExecutionConfig(
+            dbt_executable_path=DBT_EXECUTABLE_PATH,
+        ),
+    )
+
+    skip = skip_dbt()
+    completion = log_completion()
+
+    branch_result >> [dbt_models, skip]
+    dbt_models >> completion
+    skip >> completion
 
 
 iot_pipeline()
