@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: int_readings_deduped
+    description: "Deduplicated sensor readings — one row per (device_id, reading_ts)"
+    columns:
+      - name: reading_id
+        tests:
+          - not_null
+          - unique
+
+  - name: int_readings_validated
+    description: "Readings with range validation flags and z-score anomaly detection"
+    columns:
+      - name: reading_id
+        tests:
+          - not_null
+
+  - name: int_readings_enriched
+    description: "Validated readings joined with device metadata and time dimensions"
+    columns:
+      - name: reading_id
+        tests:
+          - not_null
+
+  - name: int_quarantined_readings
+    description: "Records that failed validation, with rejection reasons array"
+    columns:
+      - name: reading_id
+        tests:
+          - not_null
+
+  - name: int_late_arriving_readings
+    description: "Records where arrival delay exceeds 60 minutes"
+    columns:
+      - name: reading_id
+        tests:
+          - not_null

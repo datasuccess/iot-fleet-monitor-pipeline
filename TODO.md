@@ -56,22 +56,24 @@
 - [ ] **Verify**: `dbt seed`, `dbt run --select staging`, `dbt test --select staging`
 
 ## Phase 5: dbt Intermediate + Marts + Snapshots
-- [ ] `dbt/iot_pipeline/models/intermediate/int_readings_deduped.sql` — Incremental dedup
-- [ ] `dbt/iot_pipeline/models/intermediate/int_readings_validated.sql` — Range + z-score anomaly
-- [ ] `dbt/iot_pipeline/models/intermediate/int_readings_enriched.sql` — Join metadata + time dims
-- [ ] `dbt/iot_pipeline/models/intermediate/int_quarantined_readings.sql` — Bad records + reasons
-- [ ] `dbt/iot_pipeline/models/intermediate/int_late_arriving_readings.sql` — Late data handling
-- [ ] `dbt/iot_pipeline/models/marts/dim_devices.sql` — Device dimension (SCD2)
-- [ ] `dbt/iot_pipeline/models/marts/fct_hourly_readings.sql` — Hourly aggregations
-- [ ] `dbt/iot_pipeline/models/marts/fct_device_health.sql` — Battery, uptime, alerts
-- [ ] `dbt/iot_pipeline/models/marts/fct_anomalies.sql` — Anomaly event log
-- [ ] `dbt/iot_pipeline/models/marts/fct_data_quality.sql` — Quality scorecard per batch
-- [ ] `dbt/iot_pipeline/models/marts/rpt_fleet_overview.sql` — Executive summary
-- [ ] `dbt/iot_pipeline/snapshots/snap_device_metadata.sql` — SCD Type 2
-- [ ] `dbt/iot_pipeline/macros/deduplicate.sql` — Dedup macro
-- [ ] `dbt/iot_pipeline/macros/classify_anomaly.sql` — Anomaly classification macro
-- [ ] `dbt/iot_pipeline/macros/safe_cast_numeric.sql` — Safe casting macro
-- [ ] `dbt/iot_pipeline/tests/` — Custom singular tests
+- [x] `dbt/iot_pipeline/models/intermediate/int_readings_deduped.sql` — Incremental dedup
+- [x] `dbt/iot_pipeline/models/intermediate/int_readings_validated.sql` — Range + z-score anomaly
+- [x] `dbt/iot_pipeline/models/intermediate/int_readings_enriched.sql` — Join metadata + time dims
+- [x] `dbt/iot_pipeline/models/intermediate/int_quarantined_readings.sql` — Bad records + reasons
+- [x] `dbt/iot_pipeline/models/intermediate/int_late_arriving_readings.sql` — Late data handling
+- [x] `dbt/iot_pipeline/models/intermediate/_intermediate.yml` — Schema tests for intermediate
+- [x] `dbt/iot_pipeline/models/marts/dim_devices.sql` — Device dimension (SCD2)
+- [x] `dbt/iot_pipeline/models/marts/fct_hourly_readings.sql` — Hourly aggregations
+- [x] `dbt/iot_pipeline/models/marts/fct_device_health.sql` — Battery, uptime, alerts
+- [x] `dbt/iot_pipeline/models/marts/fct_anomalies.sql` — Anomaly event log
+- [x] `dbt/iot_pipeline/models/marts/fct_data_quality.sql` — Quality scorecard per batch
+- [x] `dbt/iot_pipeline/models/marts/rpt_fleet_overview.sql` — Executive summary
+- [x] `dbt/iot_pipeline/models/marts/_marts.yml` — Schema tests for marts
+- [x] `dbt/iot_pipeline/snapshots/snap_device_metadata.sql` — SCD Type 2
+- [x] `dbt/iot_pipeline/macros/deduplicate.sql` — Dedup macro
+- [x] `dbt/iot_pipeline/macros/classify_anomaly.sql` — Anomaly classification macro
+- [x] `dbt/iot_pipeline/macros/safe_cast_numeric.sql` — Safe casting macro
+- [x] `dbt/iot_pipeline/tests/` — 5 custom singular tests
 - [ ] **Verify**: `dbt run`, `dbt test --store-failures`, `dbt snapshot`
 
 ## Phase 6: Full Airflow Orchestration

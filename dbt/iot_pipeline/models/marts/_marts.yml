@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: dim_devices
+    description: "Device dimension — one row per device with latest metadata"
+    columns:
+      - name: device_id
+        tests:
+          - not_null
+          - unique
+
+  - name: fct_hourly_readings
+    description: "Aggregated hourly sensor metrics per device"
+    columns:
+      - name: hourly_reading_id
+        tests:
+          - not_null
+          - unique
+
+  - name: fct_device_health
+    description: "Daily device health — battery, uptime, alerts, health status"
+    columns:
+      - name: device_health_id
+        tests:
+          - not_null
+          - unique
+      - name: health_status
+        tests:
+          - accepted_values:
+              values: ['healthy', 'warning', 'critical']
+
+  - name: fct_anomalies
+    description: "Anomaly event log with classification and severity"
+    columns:
+      - name: anomaly_id
+        tests:
+          - not_null
+          - unique
+      - name: severity
+        tests:
+          - accepted_values:
+              values: ['info', 'warning', 'critical']
+
+  - name: fct_data_quality
+    description: "Data quality scorecard per batch/source file"
+    columns:
+      - name: quality_id
+        tests:
+          - not_null
+          - unique
+
+  - name: rpt_fleet_overview
+    description: "Executive daily summary — fleet-wide KPIs"
+    columns:
+      - name: report_date
+        tests:
+          - not_null
+          - unique
