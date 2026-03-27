@@ -105,3 +105,42 @@
 - [ ] Day 4 — `chaos` profile, resilience test
 - [ ] Day 5 — `normal` profile, verify recovery
 - [ ] Review `fct_data_quality` trends, `fct_anomalies`, SCD2 history, incremental behavior
+
+---
+
+## Phase 9: Data Modeling Deep Dive
+- [ ] **Data Vault**: Hub_Device, Hub_Sensor, Link_Reading, Sat_Device_Details, Sat_Reading_Metrics
+- [ ] **OBT (One Big Table)**: Single denormalized wide table for analytics
+- [ ] **Snowflake Schema**: Normalize dim_devices into dim_cluster, dim_device_type, dim_location
+- [ ] **Compare**: Side-by-side queries — same question, 4 modeling approaches
+- [ ] `EXPLAINED_DATA_MODELING.md` — Star vs Snowflake vs Data Vault vs OBT with pros/cons/when-to-use
+
+## Phase 10: ETL vs ELT Comparison
+- [ ] **ETL path**: Lambda transforms + validates data before loading (Python → typed Parquet → S3 → Snowflake)
+- [ ] **ELT path**: Current flow (raw JSON → Snowflake → dbt transforms)
+- [ ] **Benchmark**: Compare load time, transform time, storage cost, flexibility
+- [ ] **Hybrid approach**: Light validation in Lambda (ETL) + heavy transforms in dbt (ELT)
+- [ ] `EXPLAINED_ETL_ELT.md` — When to use which, real-world tradeoffs, industry trends
+
+## Phase 11: Schema Evolution & Live Changes
+- [ ] Add `co2_level` sensor field to Lambda generator — simulate firmware update
+- [ ] Add `device_alerts` source table — manual operator alerts
+- [ ] Add `dim_clusters` dimension — cluster metadata (city, timezone, manager)
+- [ ] Backfill strategy — handle historical data missing the new field
+- [ ] Migration scripts — ALTER TABLE, backwards-compatible dbt models
+- [ ] `EXPLAINED_SCHEMA_EVOLUTION.md` — How to evolve a live pipeline without downtime
+
+## Phase 12: Streamlit Dashboards
+- [ ] **App 1: Fleet Monitor** — Real-time fleet health, device map (GPS), battery levels, anomaly feed
+- [ ] **App 2: Data Quality Dashboard** — Quality score trends, quarantine breakdown, freshness status
+- [ ] **App 3: Pipeline Admin** — Trigger Lambda with profile selector, view DAG status, run dbt manually
+- [ ] Connect to Snowflake, deploy on Streamlit Community Cloud or EC2
+- [ ] `streamlit/README.md` — Setup and deployment instructions
+
+## Phase 13: Real-World Scenarios
+- [ ] **Incident simulation** — Break something on purpose, document debugging process
+- [ ] **Data backfill** — Re-process 3 days of data after discovering a bug
+- [ ] **Access control** — Create read-only analyst role, test RBAC in Snowflake
+- [ ] **Cost monitoring** — Track Snowflake credits, warehouse auto-suspend tuning
+- [ ] **CI/CD** — GitHub Actions: run dbt test on every PR, lint SQL + Python
+- [ ] **Data contracts** — Producer/consumer contracts between Lambda and dbt
