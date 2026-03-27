@@ -3,7 +3,7 @@ IoT Fleet Monitor Pipeline DAG - Phase 6
 Uses TaskFlow API with Cosmos dbt integration.
 
 Flow: trigger_lambda -> load_to_snowflake -> validate_load -> branch_on_quality
-      -> [run_dbt_models OR skip_dbt] -> log_completion
+      -> [start_dbt -> dbt_models OR skip_dbt] -> log_completion
 """
 
 import json
@@ -13,6 +13,7 @@ from pathlib import Path
 
 from airflow.decorators import dag, task
 from airflow.models.param import Param
+from airflow.operators.empty import EmptyOperator
 from airflow.utils.trigger_rule import TriggerRule
 from cosmos import (
     DbtTaskGroup,
@@ -130,7 +131,7 @@ def iot_pipeline():
 
         if row_count > 0 and run_dbt:
             print("Data valid and run_dbt=True -> running dbt models")
-            return "dbt_models.stg_sensor_readings_run"
+            return "start_dbt"
         else:
             print(f"Skipping dbt (row_count={row_count}, run_dbt={run_dbt})")
             return "skip_dbt"
@@ -157,6 +158,9 @@ def iot_pipeline():
     validation_result = validate_load(load_result)
     branch_result = branch_on_quality(validation_result)
 
+    # EmptyOperator as gateway — branch can target this by task_id
+    start_dbt = EmptyOperator(task_id="start_dbt")
+
     dbt_models = DbtTaskGroup(
         group_id="dbt_models",
         project_config=ProjectConfig(
@@ -182,8 +186,9 @@ def iot_pipeline():
     skip = skip_dbt()
     completion = log_completion()
 
-    branch_result >> [dbt_models, skip]
-    dbt_models >> completion
+    # Branch routes to start_dbt (gateway) or skip_dbt
+    branch_result >> [start_dbt, skip]
+    start_dbt >> dbt_models >> completion
     skip >> completion
 
 
