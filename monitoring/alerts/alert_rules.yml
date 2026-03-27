@@ -1,0 +1,74 @@
+# =============================================================================
+# IOT FLEET MONITOR — ALERT THRESHOLD CONFIGURATION
+# =============================================================================
+# Two severity levels per metric:
+#   - warn:     early signal, investigate when convenient
+#   - critical: immediate action required, potential data loss or outage
+# =============================================================================
+
+alerts:
+
+  data_freshness:
+    description: "Time since the last successful data ingestion"
+    unit: minutes
+    thresholds:
+      warn: 60
+      critical: 120
+    message:
+      warn: "Data has not been refreshed in over 60 minutes"
+      critical: "Data is stale — no ingestion for over 120 minutes"
+
+  quality_score:
+    description: "Composite data quality score (0–100)"
+    unit: score
+    direction: below  # alert when value drops BELOW threshold
+    thresholds:
+      warn: 80
+      critical: 60
+    message:
+      warn: "Quality score dropped below 80 — review recent ingestion"
+      critical: "Quality score below 60 — quarantine and investigate immediately"
+
+  anomaly_rate:
+    description: "Percentage of readings flagged as anomalous"
+    unit: percent
+    direction: above  # alert when value exceeds threshold
+    thresholds:
+      warn: 5
+      critical: 15
+    message:
+      warn: "Anomaly rate above 5% — check sensor calibration"
+      critical: "Anomaly rate above 15% — possible sensor failure or data corruption"
+
+  battery_level:
+    description: "Device battery percentage"
+    unit: percent
+    direction: below
+    thresholds:
+      warn: 20
+      critical: 10
+    message:
+      warn: "Devices detected with battery below 20%"
+      critical: "Devices with critically low battery (<10%) — schedule replacement"
+
+  device_offline:
+    description: "Number of devices not reporting data"
+    unit: device_count
+    direction: above
+    thresholds:
+      warn: 5
+      critical: 10
+    message:
+      warn: "More than 5 devices offline — check connectivity"
+      critical: "More than 10 devices offline — potential network or gateway issue"
+
+  quarantine_rate:
+    description: "Percentage of ingested records sent to quarantine"
+    unit: percent
+    direction: above
+    thresholds:
+      warn: 10
+      critical: 25
+    message:
+      warn: "Quarantine rate above 10% — review validation rules"
+      critical: "Quarantine rate above 25% — upstream data source may be compromised"
