@@ -144,3 +144,15 @@
 - [ ] **Cost monitoring** — Track Snowflake credits, warehouse auto-suspend tuning
 - [ ] **CI/CD** — GitHub Actions: run dbt test on every PR, lint SQL + Python
 - [ ] **Data contracts** — Producer/consumer contracts between Lambda and dbt
+
+## Phase 14: Data Formats & Processing Frameworks
+- [ ] **File formats deep dive**: JSON vs CSV vs Parquet vs Avro vs ORC — hands-on comparison
+- [ ] **Apache Iceberg**: Table format on S3, time travel, schema evolution, partition evolution
+- [ ] **Parquet internals**: Column pruning, predicate pushdown, row groups, compression (Snappy vs Zstd)
+- [ ] **Delta Lake vs Iceberg vs Hudi**: Compare the 3 open table formats
+- [ ] **Pandas vs Polars**: Process same dataset with both, benchmark speed/memory
+- [ ] **Pandas + Parquet**: Read/write Parquet, filter pushdown, PyArrow backend
+- [ ] **Polars + Iceberg**: Lazy evaluation, streaming, zero-copy reads
+- [ ] **DuckDB**: Local analytical queries on Parquet/Iceberg without a warehouse
+- [ ] **Hands-on lab**: Convert our pipeline data through all formats, measure size/speed/query time
+- [ ] `EXPLAINED_DATA_FORMATS.md` — When to use which format, real-world decision framework
