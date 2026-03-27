@@ -5,8 +5,8 @@
 
 select
     device_id,
-    latitude,
-    longitude
+    base_latitude,
+    base_longitude
 from {{ ref('dim_devices') }}
-where latitude < -90 or latitude > 90
-   or longitude < -180 or longitude > 180
+where base_latitude < -90 or base_latitude > 90
+   or base_longitude < -180 or base_longitude > 180

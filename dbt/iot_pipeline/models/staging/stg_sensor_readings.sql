@@ -29,22 +29,22 @@ parsed as (
             raw_data:reading_ts::varchar
         )                                               as reading_ts,
 
-        -- Sensor values: TRY_CAST returns NULL on invalid data
-        try_cast(raw_data:temperature as float)         as temperature,
-        try_cast(raw_data:humidity as float)             as humidity,
-        try_cast(raw_data:pressure as float)             as pressure,
-        try_cast(raw_data:battery_pct as float)          as battery_pct,
+        -- Sensor values: VARIANT must go through ::varchar first, then TRY_CAST
+        try_cast(raw_data:temperature::varchar as float)         as temperature,
+        try_cast(raw_data:humidity::varchar as float)             as humidity,
+        try_cast(raw_data:pressure::varchar as float)             as pressure,
+        try_cast(raw_data:battery_pct::varchar as float)          as battery_pct,
 
         -- GPS
-        try_cast(raw_data:latitude as float)             as latitude,
-        try_cast(raw_data:longitude as float)            as longitude,
+        try_cast(raw_data:latitude::varchar as float)             as latitude,
+        try_cast(raw_data:longitude::varchar as float)            as longitude,
 
         -- Metadata
         raw_data:firmware_version::varchar               as firmware_version,
         raw_data:error_profile::varchar                  as error_profile,
 
         -- Schema drift fields (may or may not exist)
-        try_cast(raw_data:signal_strength as float)      as signal_strength,
+        try_cast(raw_data:signal_strength::varchar as float)      as signal_strength,
         raw_data:temp_celsius::varchar                   as temp_celsius_renamed,
 
         -- Load metadata

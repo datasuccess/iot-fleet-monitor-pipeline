@@ -5,18 +5,18 @@ models:
     description: "Parsed sensor readings from raw VARIANT JSON into typed columns"
     columns:
       - name: reading_id
-        description: "Unique reading identifier (UUID)"
+        description: "Unique reading identifier (UUID) — duplicates possible before dedup"
         tests:
           - not_null
-          - unique
 
       - name: device_id
         description: "Device identifier (DEV_001 through DEV_050)"
         tests:
           - not_null
           - relationships:
-              to: ref('device_registry')
-              field: device_id
+              arguments:
+                to: ref('device_registry')
+                field: device_id
 
       - name: reading_ts
         description: "Timestamp when the reading was taken"
@@ -31,7 +31,6 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: -50
               max_value: 120
-              mostly: 0.90
               row_condition: "temperature is not null"
 
       - name: humidity
@@ -40,7 +39,6 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: -10
               max_value: 150
-              mostly: 0.90
               row_condition: "humidity is not null"
 
       - name: pressure
@@ -49,7 +47,6 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: 800
               max_value: 1200
-              mostly: 0.90
               row_condition: "pressure is not null"
 
       - name: battery_pct
@@ -58,7 +55,6 @@ models:
           - dbt_expectations.expect_column_values_to_be_between:
               min_value: -5
               max_value: 110
-              mostly: 0.90
               row_condition: "battery_pct is not null"
 
       - name: latitude
