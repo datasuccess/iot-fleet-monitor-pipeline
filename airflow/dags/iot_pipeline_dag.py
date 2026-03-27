@@ -163,6 +163,7 @@ def iot_pipeline():
             dbt_project_path=DBT_PROJECT_PATH,
         ),
         profile_config=ProfileConfig(
+            profile_name="iot_pipeline",
             profiles_yml_filepath=DBT_PROFILES_PATH,
             target_name="dev",
         ),
