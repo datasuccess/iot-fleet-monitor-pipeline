@@ -51,7 +51,7 @@ default_args = {
     tags=["iot", "pipeline", "cosmos"],
     params={
         "error_profile": Param(
-            default="none",
+            default="normal",
             type="string",
             enum=["none", "normal", "high", "chaos"],
             description="Error injection profile for data generation",
