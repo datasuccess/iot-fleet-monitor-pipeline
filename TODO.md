@@ -131,11 +131,14 @@
 - [ ] `EXPLAINED_SCHEMA_EVOLUTION.md` — How to evolve a live pipeline without downtime
 
 ## Phase 12: Streamlit Dashboards
-- [ ] **App 1: Fleet Monitor** — Real-time fleet health, device map (GPS), battery levels, anomaly feed
-- [ ] **App 2: Data Quality Dashboard** — Quality score trends, quarantine breakdown, freshness status
-- [ ] **App 3: Pipeline Admin** — Trigger Lambda with profile selector, view DAG status, run dbt manually
-- [ ] Connect to Snowflake, deploy on Streamlit Community Cloud or EC2
-- [ ] `streamlit/README.md` — Setup and deployment instructions
+- [x] **App 1: Fleet Monitor** — KPIs, quality trend, device health, GPS map, anomaly feed
+- [x] **App 2: Data Quality** — Freshness status, quality trends, quarantine analysis, late arrivals
+- [x] **App 3: Pipeline Admin** — Row counts, query runner, data lineage, Lambda trigger (local only)
+- [x] **App 4: Anomaly Explorer** — Severity/sensor filters, trends, top devices, device drill-down
+- [x] **Local version** (`streamlit/`) — Uses snowflake-connector, env var auth, plotly maps
+- [x] **Snowflake version** (`streamlit_snowflake/`) — Uses snowpark session, no auth needed, native SiS
+- [x] `snowflake/08_streamlit_setup.sql` — Git integration + STREAMLIT schema setup
+- [ ] **Verify**: Deploy all 4 pages in Snowsight, test with live data
 
 ## Phase 13: Real-World Scenarios
 - [ ] **Incident simulation** — Break something on purpose, document debugging process
