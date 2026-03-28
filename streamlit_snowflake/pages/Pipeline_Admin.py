@@ -89,32 +89,24 @@ if st.button("Run Query"):
         st.error(f"Query error: {e}")
 
 # ──────────────────────────────────────────────
-# Warehouse Activity
+# Data Lineage Overview
 # ──────────────────────────────────────────────
-st.header("Warehouse Activity")
+st.header("Data Lineage")
 
-try:
-    wh = run_query("""
-        SELECT query_id, query_type, execution_status,
-               total_elapsed_time / 1000 AS elapsed_seconds,
-               rows_produced,
-               bytes_scanned / 1024 / 1024 AS mb_scanned,
-               start_time
-        FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(
-            DATE_RANGE_START => DATEADD(hour, -6, CURRENT_TIMESTAMP()),
-            RESULT_LIMIT => 50
-        ))
-        ORDER BY start_time DESC
-    """)
-
-    if not wh.empty:
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Queries (last 6h)", len(wh))
-        col2.metric("Avg Elapsed (sec)", f"{wh['elapsed_seconds'].mean():.2f}")
-        col3.metric("Total MB Scanned", f"{wh['mb_scanned'].sum():.1f}")
-        failed = len(wh[wh["execution_status"] != "SUCCESS"])
-        col4.metric("Failed Queries", failed)
-
-        st.dataframe(wh, use_container_width=True, hide_index=True)
-except Exception as e:
-    st.info(f"Could not fetch warehouse activity: {e}")
+st.markdown("""
+```
+RAW.sensor_readings (VARIANT JSON)
+  → STAGING.stg_sensor_readings (parsed, typed)
+    → INTERMEDIATE.int_readings_deduped (duplicates removed)
+      → INTERMEDIATE.int_readings_validated (range + z-score checks)
+        → INTERMEDIATE.int_readings_enriched (+ device metadata, time dims)
+          → MARTS.fct_hourly_readings (hourly aggregations)
+          → MARTS.fct_device_health (daily device health)
+          → MARTS.fct_anomalies (anomaly event log)
+        → INTERMEDIATE.int_quarantined_readings (bad data + reasons)
+        → INTERMEDIATE.int_late_arriving_readings (late data)
+      → MARTS.fct_data_quality (quality scorecard per batch)
+    → MARTS.dim_devices (device dimension)
+  → MARTS.rpt_fleet_overview (executive daily summary)
+```
+""")
