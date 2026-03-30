@@ -118,11 +118,8 @@
 - [ ] **Verify**: `dbt run --select data_vault obt snowflake_schema`, compare outputs in Snowsight
 
 ## Phase 10: ETL vs ELT Comparison
-- [ ] **ETL path**: Lambda transforms + validates data before loading (Python → typed Parquet → S3 → Snowflake)
-- [ ] **ELT path**: Current flow (raw JSON → Snowflake → dbt transforms)
-- [ ] **Benchmark**: Compare load time, transform time, storage cost, flexibility
-- [ ] **Hybrid approach**: Light validation in Lambda (ETL) + heavy transforms in dbt (ELT)
-- [ ] `EXPLAINED_ETL_ELT.md` — When to use which, real-world tradeoffs, industry trends
+- [x] `EXPLAINED_DATA_ENGINEERING.md` — Covers ETL vs ELT, data architectures (warehouse, lake, lakehouse, mesh, fabric), all modeling approaches
+- No separate implementation needed — our pipeline IS the ELT example
 
 ## Phase 11: Schema Evolution & Live Changes
 - [ ] Add `co2_level` sensor field to Lambda generator — simulate firmware update
@@ -149,6 +146,14 @@
 - [ ] **Cost monitoring** — Track Snowflake credits, warehouse auto-suspend tuning
 - [ ] **CI/CD** — GitHub Actions: run dbt test on every PR, lint SQL + Python
 - [ ] **Data contracts** — Producer/consumer contracts between Lambda and dbt
+
+## Phase 15: Kafka & Streaming
+- [ ] Kafka + Zookeeper in docker-compose on EC2
+- [ ] Python producer simulating real-time sensor events (reuse data_generator)
+- [ ] Python consumer writing to Snowflake (direct insert or Snowpipe Streaming)
+- [ ] Compare: batch (hourly COPY INTO) vs streaming (sub-second)
+- [ ] Kafka concepts: topics, partitions, consumer groups, offsets, retention
+- [ ] `EXPLAINED_STREAMING.md` — Batch vs streaming, Kafka vs Kinesis vs Pub/Sub
 
 ## Phase 14: Data Formats & Processing Frameworks
 - [ ] **File formats deep dive**: JSON vs CSV vs Parquet vs Avro vs ORC — hands-on comparison
