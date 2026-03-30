@@ -22,6 +22,39 @@ st.set_page_config(page_title="Pipeline Admin", page_icon="🔧", layout="wide")
 st.title("🔧 Pipeline Admin")
 
 # ──────────────────────────────────────────────
+# Pipeline Health (from monitoring view)
+# ──────────────────────────────────────────────
+st.header("Pipeline Health")
+
+try:
+    ph = run_query("SELECT * FROM IOT_PIPELINE.MONITORING.pipeline_health")
+    if not ph.empty:
+        p = ph.iloc[0]
+        status = p["pipeline_status"]
+
+        hc1, hc2, hc3, hc4 = st.columns(4)
+        hc1.metric("Status", status)
+        hc2.metric("Minutes Since Load", int(p["minutes_since_last_load"]))
+        hc3.metric("Missed Batches (est)", int(p["estimated_missed_batches"]))
+        hc4.metric("Total Raw Rows", f"{int(p['total_raw_rows']):,}")
+
+        if status == "CRITICAL":
+            st.error(p["status_message"])
+            st.markdown("""
+**Recovery steps:**
+1. Check Airflow — is the DAG paused? Is the scheduler running?
+2. Unpause the DAG — `COPY INTO` will automatically load all missed S3 files
+3. Snowflake tracks loaded files, so no duplicates will be created
+4. dbt will process everything in the next run
+""")
+        elif status == "WARNING":
+            st.warning(p["status_message"])
+except Exception:
+    st.info("Pipeline health view not available — run `snowflake/09_pipeline_health.sql` first")
+
+st.divider()
+
+# ──────────────────────────────────────────────
 # Pipeline Status
 # ──────────────────────────────────────────────
 st.header("Pipeline Status")

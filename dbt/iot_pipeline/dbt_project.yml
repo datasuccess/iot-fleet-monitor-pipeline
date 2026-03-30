@@ -29,3 +29,12 @@ models:
     marts:
       +materialized: table
       +schema: marts
+    data_vault:
+      +materialized: incremental
+      +schema: data_vault
+    obt:
+      +materialized: incremental
+      +schema: obt
+    snowflake_schema:
+      +materialized: table
+      +schema: snowflake_schema

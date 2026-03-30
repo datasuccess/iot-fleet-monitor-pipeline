@@ -28,6 +28,7 @@
 - [x] `snowflake/05_streams.sql` — CDC streams on raw tables
 - [x] `snowflake/06_tasks.sql` — Autonomous freshness monitoring task
 - [x] `snowflake/07_iceberg.sql` — Iceberg external volume + table pattern for marts
+- [x] `snowflake/09_pipeline_health.sql` — Pipeline health view + monitoring task (detects Airflow downtime)
 - [x] `snowflake/tests/test_integration.sql` — 12 integration tests
 - [ ] **Verify**: Run scripts in Snowflake, configure IAM trust, test COPY INTO
 
@@ -109,11 +110,12 @@
 ---
 
 ## Phase 9: Data Modeling Deep Dive
-- [ ] **Data Vault**: Hub_Device, Hub_Sensor, Link_Reading, Sat_Device_Details, Sat_Reading_Metrics
-- [ ] **OBT (One Big Table)**: Single denormalized wide table for analytics
-- [ ] **Snowflake Schema**: Normalize dim_devices into dim_cluster, dim_device_type, dim_location
-- [ ] **Compare**: Side-by-side queries — same question, 4 modeling approaches
-- [ ] `EXPLAINED_DATA_MODELING.md` — Star vs Snowflake vs Data Vault vs OBT with pros/cons/when-to-use
+- [x] **Data Vault**: hub_device, hub_sensor_reading, link_device_reading, sat_device_details, sat_reading_metrics
+- [x] **OBT (One Big Table)**: obt_fleet_readings — 35+ columns, zero JOINs
+- [x] **Snowflake Schema**: dim_cluster, dim_device_type, dim_device_normalized, dim_time, fct_readings_normalized
+- [x] **Compare**: compare_models.sql — same question across all 4 approaches
+- [x] `EXPLAINED_DATA_MODELING.md` — Star vs Snowflake vs Data Vault vs OBT with pros/cons/when-to-use
+- [ ] **Verify**: `dbt run --select data_vault obt snowflake_schema`, compare outputs in Snowsight
 
 ## Phase 10: ETL vs ELT Comparison
 - [ ] **ETL path**: Lambda transforms + validates data before loading (Python → typed Parquet → S3 → Snowflake)

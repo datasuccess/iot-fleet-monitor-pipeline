@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: obt_fleet_readings
+    description: >
+      One Big Table — every reading with all device metadata, thresholds,
+      time dimensions, and computed fields denormalized into a single table.
+      Zero JOINs needed for analytics queries.
+    columns:
+      - name: reading_id
+        description: "Unique reading identifier"
+        tests:
+          - not_null
+          - unique
+      - name: device_id
+        tests:
+          - not_null
+      - name: reading_ts
+        tests:
+          - not_null

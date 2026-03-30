@@ -22,6 +22,29 @@ st.set_page_config(page_title="IoT Fleet Monitor", page_icon="📡", layout="wid
 st.title("📡 IoT Fleet Monitor")
 
 # ──────────────────────────────────────────────
+# Pipeline Health Banner
+# ──────────────────────────────────────────────
+try:
+    ph = run_query("SELECT * FROM IOT_PIPELINE.MONITORING.pipeline_health")
+    if not ph.empty:
+        p = ph.iloc[0]
+        status = p["pipeline_status"]
+        if status == "CRITICAL":
+            st.error(
+                f"🚨 **Pipeline DOWN** — No data loaded for {int(p['minutes_since_last_load'])} minutes. "
+                f"~{int(p['estimated_missed_batches'])} batches missed. {p['status_message']}"
+            )
+        elif status == "WARNING":
+            st.warning(
+                f"⚠️ **Pipeline Delayed** — Last load {int(p['minutes_since_last_load'])} min ago. "
+                f"{p['status_message']}"
+            )
+        else:
+            st.success(f"✅ Pipeline healthy — last load {int(p['minutes_since_last_load'])} min ago")
+except Exception:
+    pass  # View may not exist yet
+
+# ──────────────────────────────────────────────
 # KPI Row
 # ──────────────────────────────────────────────
 kpi = run_query("""

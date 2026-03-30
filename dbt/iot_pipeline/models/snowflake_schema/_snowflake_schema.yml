@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: dim_cluster
+    description: "Normalized cluster dimension — location, timezone, category."
+    columns:
+      - name: cluster_sk
+        tests:
+          - not_null
+          - unique
+      - name: cluster_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_device_type
+    description: "Normalized device type dimension — accuracy, calibration, cost."
+    columns:
+      - name: device_type_sk
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_device_normalized
+    description: "Device dimension with FKs to cluster and device_type dims."
+    columns:
+      - name: device_sk
+        tests:
+          - not_null
+          - unique
+      - name: device_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_time
+    description: "Time dimension — hourly grain, 2 years, pre-computed attributes."
+    columns:
+      - name: time_sk
+        tests:
+          - not_null
+          - unique
+
+  - name: fct_readings_normalized
+    description: "Fact table with surrogate key FKs to normalized dimensions."
+    columns:
+      - name: reading_id
+        tests:
+          - not_null
+          - unique

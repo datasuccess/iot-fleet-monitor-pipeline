@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: hub_device
+    description: "Hub table for devices. One row per unique device_id, forever."
+    columns:
+      - name: hub_device_hk
+        description: "Hash key of device_id"
+        tests:
+          - not_null
+          - unique
+      - name: device_id
+        tests:
+          - not_null
+
+  - name: hub_sensor_reading
+    description: "Hub table for readings. One row per unique reading_id."
+    columns:
+      - name: hub_reading_hk
+        tests:
+          - not_null
+          - unique
+      - name: reading_id
+        tests:
+          - not_null
+
+  - name: link_device_reading
+    description: "Link between device and reading. Captures 'device X produced reading Y'."
+    columns:
+      - name: link_device_reading_hk
+        tests:
+          - not_null
+          - unique
+      - name: hub_device_hk
+        tests:
+          - not_null
+      - name: hub_reading_hk
+        tests:
+          - not_null
+
+  - name: sat_device_details
+    description: "Satellite tracking device attribute changes (firmware, error profile)."
+    columns:
+      - name: sat_device_details_hk
+        tests:
+          - not_null
+          - unique
+
+  - name: sat_reading_metrics
+    description: "Satellite storing actual sensor values per reading."
+    columns:
+      - name: sat_reading_metrics_hk
+        tests:
+          - not_null
+          - unique

@@ -6,9 +6,12 @@
 - **Password**: airflow
 - **EC2 Instance ID**: i-01182aa00d50da692
 
+get ec2 public ip:
+aws ec2 describe-instances --instance-ids i-01182aa00d50da692 --query 'Reservations[].Instances[].PublicIpAddress' --output text
+
 ## EC2
 - **Public IP**: 52.23.158.127 *(changes on stop/start unless Elastic IP attached)*
-- **SSH**: `ssh -i ~/.ssh/iot-fleet-pipeline-key.pem ubuntu@52.23.158.127`
+- **SSH**: `ssh -i ~/.ssh/iot-fleet-pipeline-key.pem ubuntu@50.19.18.175`
 - **Region**: us-east-1
 - **Instance Type**: t4g.small (ARM/Graviton)
 
