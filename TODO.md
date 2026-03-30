@@ -148,12 +148,13 @@
 - [ ] **Data contracts** — Producer/consumer contracts between Lambda and dbt
 
 ## Phase 15: Kafka & Streaming
-- [ ] Kafka + Zookeeper in docker-compose on EC2
-- [ ] Python producer simulating real-time sensor events (reuse data_generator)
-- [ ] Python consumer writing to Snowflake (direct insert or Snowpipe Streaming)
-- [ ] Compare: batch (hourly COPY INTO) vs streaming (sub-second)
-- [ ] Kafka concepts: topics, partitions, consumer groups, offsets, retention
-- [ ] `EXPLAINED_STREAMING.md` — Batch vs streaming, Kafka vs Kinesis vs Pub/Sub
+- [x] `kafka/docker-compose.yml` — Kafka + Zookeeper + Kafka UI + topic init
+- [x] `kafka/producer.py` — Python producer with error profiles, keyed partitioning, delivery callbacks
+- [x] `kafka/consumer.py` — Console + Snowflake modes, micro-batching, at-least-once delivery
+- [x] `kafka/compare_batch_vs_streaming.sql` — Side-by-side latency and throughput queries
+- [x] `kafka/requirements.txt` — confluent-kafka, snowflake-connector
+- [x] `EXPLAINED_STREAMING.md` — Kafka concepts, batch vs streaming, Lambda vs Kappa architecture
+- [ ] **Verify**: `docker compose up -d`, run producer + consumer, compare in Snowsight
 
 ## Phase 14: Data Formats & Processing Frameworks
 - [ ] **File formats deep dive**: JSON vs CSV vs Parquet vs Avro vs ORC — hands-on comparison
