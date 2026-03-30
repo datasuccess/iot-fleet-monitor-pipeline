@@ -885,7 +885,451 @@ This is exactly what our pipeline does:
 
 ---
 
-# Part 4: Remaining Project Phases
+# Part 4: Data Quality & Observability
+
+## Data Quality Dimensions
+
+Every piece of data can be evaluated on 6 dimensions. These are industry-standard (defined by DAMA International):
+
+| Dimension | Question | Our Pipeline Example |
+|-----------|----------|---------------------|
+| **Completeness** | Is the data all there? | NULL temperature readings (error injection) |
+| **Accuracy** | Is the data correct? | Temperature = 999°C is inaccurate |
+| **Consistency** | Does it match across systems? | Same device_id in Lambda, S3, and Snowflake |
+| **Timeliness** | Is it fresh enough? | Pipeline health view checks minutes since last load |
+| **Validity** | Does it meet business rules? | Temperature between -20°C and 60°C |
+| **Uniqueness** | Are there duplicates? | int_readings_deduped removes dupes |
+
+### Quality Scoring
+Our `fct_data_quality` computes a quality score per batch:
+
+```
+quality_score = 100 × (valid_readings / total_readings)
+
+90-100: Good (normal operation)
+70-89:  Warning (high error profile)
+< 70:   Critical (chaos error profile)
+```
+
+### The Quarantine Pattern
+Bad data doesn't get deleted — it gets quarantined:
+
+```
+stg_sensor_readings (all data)
+  → int_readings_validated
+      → validation_error_count = 0 → int_readings_enriched → marts (clean data)
+      → validation_error_count > 0 → int_quarantined_readings (bad data + reasons)
+```
+
+Why keep bad data?
+- **Debugging**: see exactly what went wrong
+- **Recovery**: fix the validation rule, re-process quarantined records
+- **Metrics**: track error rates over time
+- **Compliance**: prove you didn't silently drop data
+
+---
+
+## Data Observability (The 5 Pillars)
+
+Data observability is like application monitoring (Datadog, New Relic) but for data pipelines:
+
+| Pillar | What It Monitors | Tool/Approach |
+|--------|-----------------|---------------|
+| **Freshness** | Is data arriving on time? | Pipeline health view, source freshness in dbt |
+| **Volume** | Are we getting the expected row count? | test_row_count_anomaly macro (7-day avg) |
+| **Schema** | Did columns change? | dbt contracts, schema tests |
+| **Distribution** | Are values in expected ranges? | dbt_expectations (between tests), z-score |
+| **Lineage** | Where did data come from? Where does it go? | dbt docs, `source_file` column |
+
+### Observability Tools in the Market
+- **Monte Carlo**: Automated anomaly detection on data (the "Datadog of data")
+- **Elementary**: Open-source dbt-native observability
+- **Great Expectations**: Python-based data validation
+- **Soda**: Data quality checks as YAML
+- **dbt tests + dbt_expectations**: What we use (free, built into dbt)
+
+---
+
+# Part 5: File Formats
+
+## Why File Format Matters
+
+The same 1 million sensor readings stored in different formats:
+
+| Format | File Size | Read Speed | Column Pruning | Schema | Human Readable |
+|--------|----------|------------|----------------|--------|---------------|
+| **CSV** | 150 MB | Slow | No (reads all) | No | Yes |
+| **JSON** | 200 MB | Slow | No (reads all) | Semi | Yes |
+| **Avro** | 80 MB | Medium | No (row-based) | Yes | No |
+| **Parquet** | 30 MB | Fast | Yes (columnar) | Yes | No |
+| **ORC** | 28 MB | Fast | Yes (columnar) | Yes | No |
+
+### Row-Based vs Columnar
+
+```
+ROW-BASED (CSV, JSON, Avro):        COLUMNAR (Parquet, ORC):
+┌─────┬──────┬──────┐               ┌─────┬─────┬─────┬─────┐
+│ id  │ temp │ hum  │               │ id  │ id  │ id  │ id  │  ← id column
+├─────┼──────┼──────┤               ├─────┼─────┼─────┼─────┤
+│ 001 │ 23.5 │ 65.2 │               │ 001 │ 002 │ 003 │ 004 │
+├─────┼──────┼──────┤               └─────┴─────┴─────┴─────┘
+│ 002 │ 24.1 │ 63.8 │               ┌─────┬─────┬─────┬─────┐
+├─────┼──────┼──────┤               │temp │temp │temp │temp │  ← temp column
+│ 003 │ 22.9 │ 67.0 │               ├─────┼─────┼─────┼─────┤
+└─────┴──────┴──────┘               │23.5 │24.1 │22.9 │25.0 │
+                                    └─────┴─────┴─────┴─────┘
+To read only temperature:            To read only temperature:
+  → Must scan ALL rows               → Read ONLY the temp column
+  → Read 100% of data                → Read ~33% of data
+```
+
+### Format Decision Guide
+
+```
+Need to read/edit by hand?         → CSV or JSON
+Streaming / message queue?         → Avro (schema registry) or JSON
+Analytical queries (SELECT cols)?  → Parquet
+Hive/Hadoop ecosystem?             → ORC
+Machine learning training?         → Parquet
+Data lake storage?                 → Parquet (default) or Avro (streaming)
+```
+
+### Parquet Deep Dive
+
+Parquet organizes data into **row groups** (default ~128MB each):
+
+```
+parquet_file.parquet
+├── Row Group 0 (rows 0-999,999)
+│   ├── Column: device_id  [dictionary encoded, snappy compressed]
+│   ├── Column: temperature [plain encoded, snappy compressed]
+│   ├── Column: humidity    [plain encoded, snappy compressed]
+│   └── Column: reading_ts  [delta encoded, snappy compressed]
+├── Row Group 1 (rows 1M-1.99M)
+│   └── ...
+└── Footer
+    ├── Schema (column names, types)
+    ├── Row group metadata (min/max per column per row group)
+    └── File statistics
+```
+
+**Predicate pushdown**: The footer stores min/max per column per row group. When you query `WHERE temperature > 50`, the engine reads the footer first and **skips entire row groups** where max(temperature) < 50. Reads 5% of the file instead of 100%.
+
+**Compression**: Parquet supports Snappy (fast, moderate ratio), Zstd (slower, better ratio), Gzip (slowest, best ratio). Default is Snappy — good balance.
+
+**Encoding**: Dictionary encoding for low-cardinality columns (device_id has only 50 values → stored as integers 0-49 + a dictionary). Delta encoding for timestamps (store differences instead of absolute values).
+
+### Avro vs Parquet
+
+| | Avro | Parquet |
+|---|---|---|
+| **Layout** | Row-based | Columnar |
+| **Best for** | Writing (streaming) | Reading (analytics) |
+| **Schema** | Embedded in file | Embedded in footer |
+| **Schema evolution** | Excellent (reader/writer schemas) | Good |
+| **Splittable** | Yes | Yes |
+| **Kafka** | Default format | Not common |
+| **Snowflake** | Supported | Preferred |
+
+Rule: **Avro for transport, Parquet for storage.**
+
+---
+
+# Part 6: Orchestration Patterns
+
+## DAG Design Patterns
+
+### 1. Linear Pipeline
+```
+extract → load → transform → test → publish
+```
+Simple, easy to debug. Our pipeline is mostly this.
+
+### 2. Fan-Out / Fan-In
+```
+extract → load → ┬─ transform_a ─┐
+                 ├─ transform_b ─┤→ combine → publish
+                 └─ transform_c ─┘
+```
+Parallel transforms that merge. dbt does this automatically (models with no dependencies run in parallel).
+
+### 3. Conditional Branching
+```
+load → validate → ┬─ (has_data) → dbt → publish
+                   └─ (no_data) → skip → log
+```
+Our `@task.branch()` pattern. Route based on data quality or volume.
+
+### 4. Sensor-Triggered
+```
+[wait for S3 file] → load → transform
+```
+Don't run on a schedule — wait for data to arrive. Our custom S3 sensor does this.
+
+### 5. Event-Driven (Decoupled)
+```
+Producer: EventBridge → Lambda → S3 (runs independently)
+Consumer: Airflow → COPY INTO → dbt (runs on schedule, catches up)
+```
+Our current architecture. Producer and consumer are completely independent.
+
+## Idempotency
+
+The most important property of a data pipeline. A task is **idempotent** if running it once or running it 10 times produces the same result.
+
+```sql
+-- IDEMPOTENT: Snowflake COPY INTO skips already-loaded files
+COPY INTO sensor_readings FROM @stage;
+-- Run once: loads 3 files
+-- Run again: loads 0 files (already loaded)
+-- Result: same data either way ✓
+
+-- IDEMPOTENT: dbt incremental with merge strategy
+-- Processes new rows, updates existing rows with same key
+-- Run once or twice: same result ✓
+
+-- NOT IDEMPOTENT: INSERT without dedup
+INSERT INTO readings SELECT * FROM staging;
+-- Run once: 100 rows
+-- Run again: 200 rows (duplicates!) ✗
+```
+
+Why it matters: Airflow tasks can retry on failure. If a task ran halfway and retries, idempotency ensures you don't get duplicates.
+
+## Backfill Strategies
+
+When you need to reprocess historical data:
+
+| Strategy | How | When |
+|----------|-----|------|
+| **Full refresh** | `dbt run --full-refresh` | Model logic changed fundamentally |
+| **Incremental reprocess** | Delete bad data + re-run | Bug in a specific date range |
+| **COPY INTO with FORCE** | `COPY INTO ... FORCE = TRUE` | Need to re-load specific S3 files |
+| **Airflow backfill** | `airflow dags backfill -s START -e END` | Reprocess specific date range |
+| **catchup=True** | Airflow replays missed runs | Only if each run is date-specific |
+
+Our approach: `catchup=False` + idempotent COPY INTO. Recovery is automatic — no backfill needed for missed runs.
+
+---
+
+# Part 7: Data Engineering Interview Essentials
+
+## Concepts You Must Know
+
+### 1. ACID Properties (Databases & Transactions)
+- **Atomicity**: All or nothing. A transaction fully completes or fully rolls back.
+- **Consistency**: Data always moves from one valid state to another.
+- **Isolation**: Concurrent transactions don't interfere with each other.
+- **Durability**: Once committed, data survives crashes.
+
+Snowflake provides ACID. Plain S3 files don't (that's why Iceberg/Delta add it).
+
+### 2. CAP Theorem (Distributed Systems)
+You can only have 2 of 3:
+- **Consistency**: Every read sees the latest write
+- **Availability**: Every request gets a response
+- **Partition tolerance**: System works despite network splits
+
+Snowflake chooses CP (consistency + partition tolerance). Kafka chooses AP (availability + partition tolerance — consumers may read slightly stale data).
+
+### 3. Normalization (1NF through 3NF)
+
+**1NF**: No repeating groups, atomic values
+```
+BAD:  device_id | sensors: "temp,humidity,pressure"
+GOOD: device_id | sensor_type | value (one row per sensor)
+```
+
+**2NF**: 1NF + no partial dependencies (every non-key column depends on the FULL primary key)
+```
+BAD:  (device_id, reading_ts) | temperature | device_name
+      device_name depends only on device_id, not on (device_id, reading_ts)
+GOOD: Split into readings(device_id, reading_ts, temperature) + devices(device_id, device_name)
+```
+
+**3NF**: 2NF + no transitive dependencies (non-key columns don't depend on other non-key columns)
+```
+BAD:  device_id | cluster_id | cluster_city
+      cluster_city depends on cluster_id, not directly on device_id
+GOOD: Split into devices(device_id, cluster_id) + clusters(cluster_id, cluster_city)
+      This is exactly what our Snowflake Schema does!
+```
+
+**Denormalization**: Deliberately breaking 3NF for query performance (Star Schema, OBT).
+
+### 4. Partitioning & Clustering
+
+**Partitioning** (how data is physically split):
+```
+S3 partitioning (our Lambda):
+  sensor_readings/year=2026/month=03/day=30/hour=14/batch.json
+
+  Query: WHERE year=2026 AND month=03
+  → Only scans March 2026 files, skips everything else
+
+Snowflake micro-partitions:
+  Snowflake auto-partitions into 16MB compressed micro-partitions
+  Query optimizer prunes partitions using min/max metadata
+```
+
+**Clustering** (how data is sorted within partitions):
+```sql
+-- Snowflake clustering key
+ALTER TABLE fct_hourly_readings CLUSTER BY (device_id, reading_hour);
+-- Now queries filtering by device_id + reading_hour scan fewer micro-partitions
+```
+
+### 5. Window Functions (SQL Interview Favorite)
+
+```sql
+-- Running average (last 12 readings)
+AVG(temperature) OVER (
+    PARTITION BY device_id
+    ORDER BY reading_ts
+    ROWS BETWEEN 11 PRECEDING AND CURRENT ROW
+) AS rolling_avg_temp
+
+-- Rank devices by temperature within each cluster
+RANK() OVER (
+    PARTITION BY cluster_id
+    ORDER BY avg_temperature DESC
+) AS temp_rank
+
+-- Detect gaps (minutes between readings)
+DATEDIFF(minute,
+    LAG(reading_ts) OVER (PARTITION BY device_id ORDER BY reading_ts),
+    reading_ts
+) AS minutes_since_last_reading
+
+-- Deduplication (our int_readings_deduped pattern)
+ROW_NUMBER() OVER (
+    PARTITION BY reading_id
+    ORDER BY loaded_at DESC
+) AS row_num
+-- WHERE row_num = 1 → keeps latest version of each reading
+```
+
+### 6. Change Data Capture (CDC)
+
+How to track changes in source systems:
+
+| Method | How | Tools |
+|--------|-----|-------|
+| **Timestamp-based** | `WHERE updated_at > last_run` | dbt incremental |
+| **Log-based** | Read database transaction log | Debezium, Fivetran, AWS DMS |
+| **Trigger-based** | Database triggers write to changelog | Legacy, avoid |
+| **Snapshot comparison** | Compare current vs previous full snapshot | dbt snapshots (SCD2) |
+| **Streams** | Snowflake tracks row-level changes | Snowflake Streams (our 05_streams.sql) |
+
+Our pipeline uses:
+- **Timestamp-based CDC** in dbt incremental models (`WHERE loaded_at > last_run`)
+- **Snowflake Streams** for tracking raw table changes
+- **dbt Snapshots** for SCD Type 2 on device metadata
+
+### 7. Data Governance & Security
+
+| Concept | What | Our Implementation |
+|---------|------|-------------------|
+| **RBAC** | Role-based access control | IOT_LOADER (write raw), IOT_TRANSFORMER (read/write all) |
+| **Column masking** | Hide sensitive columns from certain roles | Not implemented (no PII in sensor data) |
+| **Row access policy** | Different roles see different rows | Could add: analyst sees only their cluster |
+| **Data classification** | Tag columns as PII, sensitive, public | Snowflake has built-in classification |
+| **Encryption** | At-rest and in-transit | S3 SSE + Snowflake automatic |
+| **Audit logging** | Who queried what, when | Snowflake QUERY_HISTORY |
+
+### 8. Cost Optimization
+
+| Strategy | Impact | Our Implementation |
+|----------|--------|-------------------|
+| **Auto-suspend warehouse** | High | `ALTER WAREHOUSE SET AUTO_SUSPEND = 60` |
+| **Right-size warehouse** | High | XSMALL for our workload |
+| **Clustering keys** | Medium | On large fact tables |
+| **Materialized views** | Medium | For expensive repeated queries |
+| **Transient tables** | Low | Skip Fail-Safe for staging tables |
+| **Result caching** | Free | Snowflake caches query results for 24h |
+| **Parquet over JSON** | Medium | Columnar = less data scanned |
+
+---
+
+# Part 8: The Modern Data Stack (2024-2026)
+
+## The Standard Toolchain
+
+```
+┌─────────────┐     ┌─────────┐     ┌───────────┐     ┌─────────┐     ┌──────────┐
+│  Ingestion   │────│ Storage  │────│ Transform  │────│  Serve   │────│ Observe  │
+├─────────────┤     ├─────────┤     ├───────────┤     ├─────────┤     ├──────────┤
+│ Fivetran     │     │ S3       │     │ dbt        │     │ Looker   │     │ Monte    │
+│ Airbyte      │     │ GCS      │     │ Spark      │     │ Tableau  │     │  Carlo   │
+│ Debezium     │     │ Snowflake│     │ Snowflake  │     │ Streamlit│     │ Elementry│
+│ Kafka        │     │ BigQuery │     │ Polars     │     │ Metabase │     │ dbt tests│
+│ Custom       │     │ Databricks│    │            │     │ Sigma    │     │ Soda     │
+│  (Lambda)    │     │ Iceberg  │     │            │     │ Hex      │     │          │
+└─────────────┘     └─────────┘     └───────────┘     └─────────┘     └──────────┘
+                         │                                                    │
+                    ┌────┴────────────────────────────────────────────────────┴────┐
+                    │                    Orchestration                              │
+                    │            Airflow / Dagster / Prefect / Mage                 │
+                    └─────────────────────────────────────────────────────────────┘
+```
+
+### Tool Categories
+
+**Ingestion** (getting data into the platform):
+- **Fivetran / Airbyte**: Managed connectors (300+ sources, no code)
+- **Debezium**: Open-source CDC from databases
+- **Kafka / Kafka Connect**: Streaming ingestion
+- **Custom scripts**: Lambda functions, Python scripts (what we built)
+
+**Storage** (where data lives):
+- **Snowflake / BigQuery / Redshift**: Cloud warehouses
+- **S3 / GCS / ADLS**: Object storage (data lake)
+- **Iceberg / Delta / Hudi**: Table formats (lakehouse)
+- **Databricks**: Unified analytics platform (lake + warehouse)
+
+**Transform** (business logic):
+- **dbt**: SQL-based transforms, industry standard (what we use)
+- **Spark**: Distributed processing for large scale
+- **Polars**: Fast DataFrame library (Rust-based, Python API)
+- **SQLMesh**: dbt alternative with virtual environments
+
+**Serve** (how consumers access data):
+- **Looker / Tableau / Power BI**: Enterprise BI
+- **Streamlit**: Python dashboards (what we use)
+- **Metabase**: Open-source BI
+- **Sigma / Hex**: Cloud-native analytics notebooks
+
+**Observe** (monitoring data quality):
+- **Monte Carlo**: Automated data observability
+- **Elementary**: dbt-native observability (open-source)
+- **Soda**: Data quality as YAML
+- **dbt tests**: Built-in (what we use)
+
+**Orchestrate** (scheduling and dependencies):
+- **Airflow**: Most widely used (what we use)
+- **Dagster**: Software-defined assets, type-safe
+- **Prefect**: Pythonic, easy to start
+- **Mage**: Visual pipeline builder
+
+### Emerging Trends (2025-2026)
+
+1. **Iceberg everywhere**: Snowflake, BigQuery, Databricks, Athena all support Iceberg natively. Vendor lock-in is dying.
+
+2. **dbt + Snowflake/BigQuery**: The SQL transform layer is settled. dbt won.
+
+3. **Streaming + batch convergence**: Kafka + Flink for real-time, dbt for batch, same warehouse. Not either/or.
+
+4. **AI in data engineering**: LLMs writing SQL, auto-generating dbt models, automated anomaly detection. Still early but accelerating.
+
+5. **Data contracts**: Formal agreements between producers and consumers. Moving from "nice idea" to "required practice."
+
+6. **Semantic layer**: Metrics defined once (in dbt Metrics or Cube), consumed everywhere. No more "my dashboard says X but yours says Y."
+
+7. **Cost awareness**: FinOps for data. Teams tracking cost per pipeline, per query, per user. Snowflake credit monitoring (our `10_cost_monitoring.sql`).
+
+---
+
+# Part 9: Remaining Project Phases
 
 ## Phase 10: ETL vs ELT (No Implementation Needed)
 - ✅ Covered above — understand the tradeoffs
