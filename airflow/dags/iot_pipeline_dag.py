@@ -1,8 +1,10 @@
 """
-IoT Fleet Monitor Pipeline DAG - Phase 6
-Uses TaskFlow API with Cosmos dbt integration.
+IoT Fleet Monitor Pipeline DAG - Decoupled Pattern
 
-Flow: trigger_lambda -> load_to_snowflake -> validate_load -> branch_on_quality
+Lambda runs independently via EventBridge (producer).
+This DAG is the consumer — loads whatever S3 data exists since last success.
+
+Flow: load_new_data -> validate_load -> branch_on_quality
       -> [start_dbt -> dbt_models OR skip_dbt] -> log_completion
 """
 
@@ -23,7 +25,6 @@ from cosmos import (
     RenderConfig,
 )
 
-from helpers.lambda_utils import invoke_lambda
 from helpers.notify import on_failure_callback, on_success_callback
 from helpers.snowflake_utils import run_snowflake_query
 
@@ -42,7 +43,7 @@ default_args = {
 
 @dag(
     dag_id="iot_pipeline",
-    description="IoT sensor data: Lambda -> S3 -> Snowflake -> dbt (Cosmos)",
+    description="IoT sensor data: S3 -> Snowflake -> dbt (Cosmos). Decoupled from Lambda.",
     schedule="0 * * * *",
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -50,12 +51,6 @@ default_args = {
     default_args=default_args,
     tags=["iot", "pipeline", "cosmos"],
     params={
-        "error_profile": Param(
-            default="normal",
-            type="string",
-            enum=["none", "normal", "high", "chaos"],
-            description="Error injection profile for data generation",
-        ),
         "run_dbt": Param(
             default=True,
             type="boolean",
@@ -65,24 +60,23 @@ default_args = {
     on_success_callback=on_success_callback,
 )
 def iot_pipeline():
-    """End-to-end IoT fleet monitoring pipeline with dbt via Cosmos."""
+    """
+    Consumer DAG — loads unprocessed S3 data into Snowflake, then runs dbt.
+
+    Lambda (producer) runs independently via EventBridge and writes to S3.
+    This DAG picks up whatever data is in S3 since the last successful load.
+    Snowflake COPY INTO is idempotent — already-loaded files are skipped.
+    """
 
     @task()
-    def trigger_lambda(**context) -> dict:
-        """Invoke Lambda to generate sensor data and write to S3."""
-        error_profile = context["params"]["error_profile"]
+    def load_new_data() -> dict:
+        """
+        COPY INTO from S3 stage to Snowflake RAW table.
 
-        response = invoke_lambda(
-            function_name="iot-fleet-data-generator",
-            payload={"error_profile": error_profile},
-        )
-
-        print(f"Lambda response: {json.dumps(response, indent=2)}")
-        return response
-
-    @task()
-    def load_to_snowflake(lambda_response: dict) -> dict:
-        """COPY INTO from S3 stage to Snowflake RAW table."""
+        Snowflake tracks which files have already been loaded (metadata).
+        Running COPY INTO again is safe — it only loads NEW files.
+        This is the key to idempotent recovery after downtime.
+        """
         copy_sql = """
             COPY INTO IOT_PIPELINE.RAW.sensor_readings (raw_data, loaded_at, source_file)
             FROM (
@@ -98,47 +92,71 @@ def iot_pipeline():
         """
 
         result = run_snowflake_query(copy_sql)
-        print(f"COPY INTO result: {result}")
+
+        # COPY INTO returns rows like: (file, status, rows_parsed, rows_loaded, ...)
+        files_loaded = len(result) if result else 0
+        rows_loaded = sum(row[3] for row in result) if result else 0
+
+        print(f"COPY INTO loaded {files_loaded} new files, {rows_loaded} rows")
+        print(f"Raw result: {result}")
 
         return {
-            "status": "loaded",
-            "s3_path": lambda_response.get("body", {}).get("s3_path", ""),
+            "files_loaded": files_loaded,
+            "rows_loaded": rows_loaded,
         }
 
     @task()
     def validate_load(load_result: dict) -> dict:
-        """Validate that data was loaded successfully."""
+        """Check total data in raw table and recent load results."""
         count_sql = """
-            SELECT COUNT(*) AS total_rows
-            FROM IOT_PIPELINE.RAW.sensor_readings
-            WHERE loaded_at >= DATEADD(MINUTE, -10, CURRENT_TIMESTAMP());
+            SELECT
+                COUNT(*) AS total_rows,
+                COUNT(DISTINCT source_file) AS total_files,
+                MAX(loaded_at) AS latest_load
+            FROM IOT_PIPELINE.RAW.sensor_readings;
         """
 
         result = run_snowflake_query(count_sql)
-        row_count = result[0][0] if result else 0
-        print(f"Rows loaded in last 10 minutes: {row_count}")
+        total_rows = result[0][0] if result else 0
+        total_files = result[0][1] if result else 0
+        latest_load = result[0][2] if result else None
 
-        if row_count == 0:
-            print("WARNING: No rows loaded in the last 10 minutes")
+        new_files = load_result.get("files_loaded", 0)
+        new_rows = load_result.get("rows_loaded", 0)
 
-        return {"row_count": row_count, "is_valid": row_count > 0}
+        print(f"Validation:")
+        print(f"  New files this run: {new_files}")
+        print(f"  New rows this run: {new_rows}")
+        print(f"  Total rows in raw: {total_rows}")
+        print(f"  Total files loaded: {total_files}")
+        print(f"  Latest load: {latest_load}")
+
+        return {
+            "new_files": new_files,
+            "new_rows": new_rows,
+            "total_rows": total_rows,
+            "has_new_data": new_rows > 0,
+        }
 
     @task.branch()
     def branch_on_quality(validation_result: dict, **context) -> str:
-        """Branch based on data quality and run_dbt parameter."""
-        row_count = validation_result.get("row_count", 0)
+        """Branch: run dbt if there's data to process."""
+        has_new_data = validation_result.get("has_new_data", False)
         run_dbt = context["params"].get("run_dbt", True)
 
-        if row_count > 0 and run_dbt:
-            print("Data valid and run_dbt=True -> running dbt models")
+        if has_new_data and run_dbt:
+            print("New data loaded and run_dbt=True -> running dbt models")
             return "start_dbt"
+        elif not has_new_data:
+            print("No new data found in S3 — skipping dbt")
+            return "skip_dbt"
         else:
-            print(f"Skipping dbt (row_count={row_count}, run_dbt={run_dbt})")
+            print(f"Skipping dbt (run_dbt={run_dbt})")
             return "skip_dbt"
 
     @task()
     def skip_dbt():
-        """Placeholder task when dbt is skipped."""
+        """No new data or dbt disabled — skip transformations."""
         print("Skipping dbt transformations")
 
     @task(trigger_rule=TriggerRule.NONE_FAILED_MIN_ONE_SUCCESS)
@@ -153,12 +171,11 @@ def iot_pipeline():
         print("=" * 60)
 
     # Wire up the task flow
-    lambda_result = trigger_lambda()
-    load_result = load_to_snowflake(lambda_result)
+    load_result = load_new_data()
     validation_result = validate_load(load_result)
     branch_result = branch_on_quality(validation_result)
 
-    # EmptyOperator as gateway — branch can target this by task_id
+    # EmptyOperator as gateway for branching into Cosmos task group
     start_dbt = EmptyOperator(task_id="start_dbt")
 
     dbt_models = DbtTaskGroup(
