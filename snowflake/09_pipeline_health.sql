@@ -67,3 +67,15 @@ ALTER TASK IOT_PIPELINE.MONITORING.check_pipeline_health RESUME;
 
 -- Quick check query (run anytime):
 -- SELECT * FROM IOT_PIPELINE.MONITORING.pipeline_health;
+
+
+-- Pipeline health (how long since last load)
+  SELECT * FROM IOT_PIPELINE.MONITORING.pipeline_health;
+
+  -- How many files are waiting in S3?
+  LIST @IOT_PIPELINE.RAW.raw_sensor_stage;
+
+  -- Last loaded data timestamp
+  SELECT MAX(loaded_at) AS last_load,
+         DATEDIFF(hour, MAX(loaded_at), CURRENT_TIMESTAMP()) AS hours_since_last_load
+  FROM IOT_PIPELINE.RAW.sensor_readings;

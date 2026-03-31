@@ -34,16 +34,16 @@ services:
       zookeeper:
         condition: service_healthy
     ports:
-      - "9092:9092"      # Internal (Docker network)
-      - "9093:9093"      # External (host machine)
+      - "9092:9092"      # External (host machine)
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 
       # Listeners: internal (Docker) + external (host)
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
 
       # Topic defaults
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -57,7 +57,7 @@ services:
       # Performance tuning for small instance
       KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
     healthcheck:
-      test: kafka-topics --bootstrap-server localhost:9092 --list
+      test: kafka-topics --bootstrap-server localhost:29092 --list
       interval: 15s
       timeout: 10s
       retries: 5
@@ -73,7 +73,7 @@ services:
       - "8090:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: iot-fleet
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
       DYNAMIC_CONFIG_ENABLED: "true"
 
@@ -89,24 +89,24 @@ services:
       echo 'Creating Kafka topics...'
 
       kafka-topics --create --if-not-exists \
-        --bootstrap-server kafka:9092 \
+        --bootstrap-server kafka:29092 \
         --topic iot.sensor.readings \
         --partitions 5 \
         --replication-factor 1 \
         --config retention.ms=86400000
 
       kafka-topics --create --if-not-exists \
-        --bootstrap-server kafka:9092 \
+        --bootstrap-server kafka:29092 \
         --topic iot.sensor.alerts \
         --partitions 3 \
         --replication-factor 1
 
       kafka-topics --create --if-not-exists \
-        --bootstrap-server kafka:9092 \
+        --bootstrap-server kafka:29092 \
         --topic iot.sensor.deadletter \
         --partitions 1 \
         --replication-factor 1
 
       echo 'Topics created:'
-      kafka-topics --list --bootstrap-server kafka:9092
+      kafka-topics --list --bootstrap-server kafka:29092
       "
