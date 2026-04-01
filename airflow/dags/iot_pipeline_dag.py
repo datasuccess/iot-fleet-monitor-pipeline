@@ -20,6 +20,7 @@ from airflow.utils.trigger_rule import TriggerRule
 from cosmos import (
     DbtTaskGroup,
     ExecutionConfig,
+    LoadMode,
     ProfileConfig,
     ProjectConfig,
     RenderConfig,
@@ -189,6 +190,7 @@ def iot_pipeline():
             target_name="dev",
         ),
         render_config=RenderConfig(
+            load_method=LoadMode.CUSTOM,
             select=[
                 "path:models/staging",
                 "path:models/intermediate",
