@@ -1,6 +1,8 @@
-# Phase 3: Airflow DAG — Code Explained
+# Airflow — DAG Design, Orchestration & Testing
 
-## 1. TaskFlow API (@task decorator)
+## Core Concepts
+
+### TaskFlow API (@task decorator)
 
 ```python
 @task()
@@ -13,83 +15,63 @@ def load_to_snowflake(lambda_response: dict) -> dict:
     ...
 ```
 
-**Old way** (Airflow 1.x): Define PythonOperator, pass callable, manually push/pull XComs.
-
-**TaskFlow** (Airflow 2.x+): Decorate functions with `@task()`. Return values automatically become XComs. Pass them as function arguments — Airflow handles serialization.
+**Old way** (Airflow 1.x): PythonOperator, manual XCom push/pull.
+**TaskFlow** (2.x+): Decorate with `@task()`, return values auto-become XComs, pass as function arguments.
 
 ```python
-# This creates the DAG dependency AND passes data:
 lambda_result = trigger_lambda()
-load_result = load_to_snowflake(lambda_result)  # Receives lambda_result via XCom
+load_result = load_to_snowflake(lambda_result)  # Receives via XCom automatically
 ```
 
----
-
-## 2. DAG Decorator
+### DAG Decorator
 
 ```python
 @dag(
-    schedule="*/5 * * * *",     # Cron: every 5 minutes
+    schedule="*/5 * * * *",     # Every 5 minutes
     catchup=False,               # Don't backfill past runs
-    max_active_runs=1,           # Only one run at a time
+    max_active_runs=1,           # One run at a time
     params={...},                # Runtime parameters
 )
 def iot_pipeline():
     ...
 
-iot_pipeline()  # Must call to register the DAG
+iot_pipeline()  # Must call to register
 ```
 
-`catchup=False` is important — without it, Airflow would try to run every 5-minute interval since `start_date` (potentially thousands of runs).
+`catchup=False` prevents Airflow from running every missed interval since `start_date`.
 
----
-
-## 3. Airflow Params
+### Airflow Params — Runtime Configuration
 
 ```python
 params={
-    "error_profile": Param(
-        default="none",
-        type="string",
-        enum=["none", "normal", "high", "chaos"],
-    ),
+    "error_profile": Param(default="none", enum=["none", "normal", "high", "chaos"]),
+    "run_dbt": Param(default=True, type="boolean"),
 }
 ```
 
-Params let you **change behavior at runtime** without code changes. In the Airflow UI:
-1. Click "Trigger DAG w/ config"
-2. Select error_profile from dropdown
-3. Run
-
-The DAG reads it via `context["params"]["error_profile"]`.
-
-This is how the 5-Day Production Run works — same DAG, different params each day.
+Change behavior **at trigger time** without code changes:
+- UI: "Trigger DAG w/ config" → fill values
+- CLI: `airflow dags trigger --conf '{"error_profile": "chaos"}'`
 
 ---
 
-## 4. Lambda Invocation Helper (lambda_utils.py)
+## Lambda Integration (lambda_utils.py)
 
 ```python
-config = Config(
-    retries={"max_attempts": 3, "mode": "adaptive"},
-    read_timeout=120,
-)
+config = Config(retries={"max_attempts": 3, "mode": "adaptive"}, read_timeout=120)
 client = boto3.client("lambda", config=config)
 response = client.invoke(
     FunctionName=function_name,
-    InvocationType="RequestResponse",  # Synchronous
+    InvocationType="RequestResponse",  # Synchronous (wait for result)
     Payload=json.dumps(payload),
 )
 ```
 
-Key decisions:
-- **RequestResponse**: Wait for Lambda to finish (vs. "Event" which is fire-and-forget)
-- **Adaptive retry**: boto3 automatically retries with exponential backoff on throttling
-- **read_timeout=120**: Lambda has 60s timeout, we wait 120s to be safe
+- **RequestResponse**: Wait for Lambda to finish (vs "Event" = fire-and-forget)
+- **Adaptive retry**: Exponential backoff on throttling
+- **read_timeout=120**: Lambda has 60s timeout, we wait 120s
 
----
-
-## 5. Snowflake COPY INTO (snowflake_utils.py)
+## Snowflake COPY INTO (snowflake_utils.py)
 
 ```sql
 COPY INTO sensor_readings (raw_data, loaded_at, source_file)
@@ -102,72 +84,184 @@ PATTERN = '.*\.json'
 ON_ERROR = 'CONTINUE';
 ```
 
-- `$1` — The entire JSON object (loaded as VARIANT)
-- `METADATA$FILENAME` — Snowflake auto-populates this with the S3 file path
-- `ON_ERROR = 'CONTINUE'` — Skip bad files, don't fail the whole load
-- `PATTERN` — Only load .json files (ignore any other files in the stage)
-
-Snowflake tracks which files have already been loaded — running COPY INTO twice won't duplicate data.
+- `$1` — Entire JSON as VARIANT
+- `METADATA$FILENAME` — S3 file path auto-populated
+- `ON_ERROR = 'CONTINUE'` — Skip bad files
+- Snowflake tracks loaded files — COPY INTO won't duplicate
 
 ---
 
-## 6. Docker Compose Volumes
+## Astronomer Cosmos (dbt + Airflow)
 
-```yaml
-volumes:
-  - ./dags:/opt/airflow/dags
-  - ../dbt/iot_pipeline:/opt/airflow/dbt/iot_pipeline
+### The Problem
+Without Cosmos, dbt runs as a single BashOperator. If model #15 of 20 fails, you dig through logs.
+
+### The Solution
+Cosmos renders each dbt model as an individual Airflow task:
+```
+stg_sensor_readings → int_readings_deduped → int_readings_validated → fct_hourly_readings
+                                           → int_readings_enriched  → fct_device_health
+                                           → int_quarantined_readings
 ```
 
-DAGs directory is mounted so you can edit DAGs without rebuilding the container. The dbt project is also mounted — Cosmos needs access to dbt models to render them as Airflow tasks.
-
----
-
-## 7. Environment Variables for Credentials
-
-```yaml
-SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT:-}
-AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-```
-
-The `${VAR:-}` syntax means: use the env var if set, otherwise empty string. Values come from `airflow/.env` (not committed to git).
-
-In production, you'd use:
-- AWS Secrets Manager or SSM Parameter Store
-- Airflow Connections (stored encrypted in Airflow's DB)
-- HashiCorp Vault
-
-For learning, env vars are fine.
-
----
-
-## 8. Astronomer Cosmos (Phase 4+)
-
+### Key Components
 ```python
-from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig
+from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, RenderConfig
 
 dbt_tasks = DbtTaskGroup(
-    project_config=ProjectConfig(dbt_project_path="/opt/airflow/dbt/iot_pipeline"),
+    project_config=ProjectConfig("/opt/airflow/dbt/iot_pipeline"),
     profile_config=ProfileConfig(...),
+    render_config=RenderConfig(select=["path:models/staging", "path:models/intermediate"]),
 )
 ```
 
-Cosmos turns each dbt model into an individual Airflow task. Benefits:
-- See dbt model dependencies in Airflow's graph view
-- Retry individual models (not the whole dbt run)
-- dbt test results visible per-model
-- Full observability without leaving Airflow UI
-
-This will be wired in after we build the dbt models in Phase 4-5.
+### How It Works
+1. Reads `dbt_project.yml` and model files at DAG parse time
+2. Builds dependency graph from `{{ ref() }}` calls
+3. Each model becomes a task, each `ref()` becomes a dependency
+4. At runtime, each task runs `dbt run --select model_name`
 
 ---
 
-## DAG Flow (Phase 3)
+## @task.branch — Conditional Routing
+
+```python
+@task.branch()
+def branch_on_quality(validation_result):
+    if validation_result["rows_loaded_recent"] > 0:
+        return "dbt_transform"
+    return "skip_dbt"
+```
+
+Returns task_id(s) to run. All other branches get skipped. If load found 0 rows, skip dbt entirely.
+
+## Trigger Rules
+
+| Rule | Meaning |
+|------|---------|
+| `all_success` (default) | All parents must succeed |
+| `none_failed_min_one_success` | No parent failed, at least one succeeded (skipped OK) |
+| `all_done` | Run regardless of parent status |
+| `one_success` | At least one parent succeeded |
+
+## SLA (Service Level Agreement)
+
+```python
+default_args = {"sla": timedelta(minutes=45)}
+```
+
+If any task exceeds 45 minutes from scheduled start → SLA miss callback fires (alerts, doesn't stop the task).
+
+## Callbacks
+
+```python
+def on_failure_callback(context):
+    task_id = context["task_instance"].task_id
+    exception = context.get("exception")
+    # Log, Slack, PagerDuty, etc.
+```
+
+- `on_failure_callback`: After all retries exhausted
+- `on_success_callback`: Task completed
+- `on_sla_miss_callback`: SLA exceeded
+
+---
+
+## Monitoring DAG — Separation of Concerns
+
+Runs at `:30` past each hour (main pipeline runs at `:00`). Checks data **after** pipeline finishes.
+
+**Why separate?** Different schedule, different owner, different failure handling. Monitoring works even if the pipeline DAG is broken.
+
+### Checks
+- **Freshness**: `DATEDIFF(MINUTE, MAX(loaded_at), CURRENT_TIMESTAMP())` — alert if > 2 hours
+- **Quality**: Latest batch quality score from `fct_data_quality` — warn if < 80
+- **Anomaly spike**: Count in last hour — alert if > 50
+
+## Custom S3 Sensor
+
+```python
+class S3FileCountSensor(BaseSensorOperator):
+    def poke(self, context):
+        # List S3 objects, return True if enough files exist
+```
+
+Sensors **wait** for a condition. `poke_interval` = check frequency, `timeout` = max wait, `mode` = `poke` (holds worker) vs `reschedule` (releases between checks).
+
+---
+
+## Docker Compose Setup
+
+```yaml
+volumes:
+  - ./dags:/opt/airflow/dags              # Edit DAGs without rebuild
+  - ../dbt/iot_pipeline:/opt/airflow/dbt/iot_pipeline  # Cosmos needs dbt access
+```
+
+Environment variables via `${VAR:-}` from `airflow/.env` (not committed).
+
+---
+
+## DAG Flow
 
 ```
-trigger_lambda → load_to_snowflake → validate_load
-     |                  |                  |
-  Invoke Lambda    COPY INTO from     Count rows loaded
-  with error       S3 to Snowflake    in last 10 minutes
-  profile param    RAW schema         (fail if 0)
+trigger_lambda → load_to_snowflake → validate_load → branch
+                                                       ├── (has_data) → dbt_staging → dbt_intermediate → dbt_marts
+                                                       └── (no_data) → skip → log
 ```
+
+## Key Patterns
+1. **Branch + trigger_rule**: Conditional execution without breaking the DAG
+2. **Cosmos over BashOperator**: Per-model visibility in Airflow UI
+3. **Params over hardcoded config**: Runtime flexibility without code changes
+4. **Separate monitoring DAG**: Independent observability
+5. **Callbacks for alerting**: Don't rely on checking the UI manually
+
+---
+
+## Testing & Deployment
+
+### Deploy to EC2
+
+```bash
+# Copy credentials (gitignored)
+scp -i ~/.ssh/iot-fleet-pipeline-key.pem airflow/.env ubuntu@<IP>:/home/ubuntu/iot-pipeline/airflow/.env
+
+# Rebuild on EC2
+ssh -i ~/.ssh/iot-fleet-pipeline-key.pem ubuntu@<IP>
+cd /home/ubuntu/iot-pipeline/airflow
+docker compose down && docker compose build && docker compose up -d
+```
+
+### Verify
+
+```bash
+docker compose ps                    # All healthy?
+docker compose logs -f airflow-scheduler  # Check for errors
+```
+
+### Trigger DAG
+
+**UI**: Unpause → "Trigger DAG w/ config" → select error_profile → Trigger
+
+**CLI**:
+```bash
+docker exec airflow-airflow-webserver-1 \
+  airflow dags trigger iot_pipeline --conf '{"error_profile": "none"}'
+```
+
+### Check Results in Snowflake
+```sql
+SELECT COUNT(*) FROM IOT_PIPELINE.RAW.sensor_readings;
+SELECT raw_data:device_id::VARCHAR, raw_data:temperature::FLOAT, loaded_at
+FROM IOT_PIPELINE.RAW.sensor_readings ORDER BY loaded_at DESC LIMIT 10;
+```
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| DAG not in UI | `airflow dags list-import-errors` |
+| Task failed | `docker compose logs -f airflow-scheduler` |
+| Lambda timeout | Verify AWS creds in `.env`, test Lambda directly |
+| Snowflake error | Check account format, verify credentials |
