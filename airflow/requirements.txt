@@ -1,5 +1,6 @@
 dbt-snowflake
 boto3
+cryptography
 apache-airflow-providers-snowflake
 apache-airflow-providers-amazon
 astronomer-cosmos[dbt-snowflake]

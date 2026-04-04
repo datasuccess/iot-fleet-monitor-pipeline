@@ -22,7 +22,7 @@ x-airflow-common: &airflow-common
     # Snowflake connection (used by DAG tasks and Cosmos)
     SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT:-}
     SNOWFLAKE_USER: ${SNOWFLAKE_USER:-}
-    SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD:-}
+    SNOWFLAKE_PRIVATE_KEY_PATH: /opt/airflow/keys/rsa_key.p8
     SNOWFLAKE_ROLE: ${SNOWFLAKE_ROLE:-IOT_TRANSFORMER}
     SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE:-IOT_WH}
     SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE:-IOT_PIPELINE}
@@ -35,6 +35,7 @@ x-airflow-common: &airflow-common
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ../dbt/iot_pipeline:/opt/airflow/dbt/iot_pipeline
+    - ~/.ssh/snowflake/rsa_key.p8:/opt/airflow/keys/rsa_key.p8:ro
   depends_on:
     postgres:
       condition: service_healthy

@@ -1,16 +1,34 @@
-"""Snowflake query helper using direct connector."""
+"""Snowflake query helper using direct connector with key-pair auth."""
 
 import os
 
 import snowflake.connector
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+
+
+def _load_private_key():
+    """Load RSA private key from file for key-pair authentication."""
+    key_path = os.environ.get(
+        "SNOWFLAKE_PRIVATE_KEY_PATH", "/opt/airflow/keys/rsa_key.p8"
+    )
+    with open(key_path, "rb") as f:
+        private_key = serialization.load_pem_private_key(
+            f.read(), password=None, backend=default_backend()
+        )
+    return private_key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
 
 
 def get_snowflake_connection():
-    """Create a Snowflake connection from environment variables."""
+    """Create a Snowflake connection using key-pair authentication."""
     return snowflake.connector.connect(
         account=os.environ["SNOWFLAKE_ACCOUNT"],
         user=os.environ["SNOWFLAKE_USER"],
-        password=os.environ["SNOWFLAKE_PASSWORD"],
+        private_key=_load_private_key(),
         role=os.environ.get("SNOWFLAKE_ROLE", "IOT_TRANSFORMER"),
         warehouse=os.environ.get("SNOWFLAKE_WAREHOUSE", "IOT_WH"),
         database=os.environ.get("SNOWFLAKE_DATABASE", "IOT_PIPELINE"),
