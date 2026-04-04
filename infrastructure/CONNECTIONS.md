@@ -14,7 +14,7 @@ aws ec2 describe-instances --instance-ids i-01182aa00d50da692 --query 'Reservati
 - **Public IP**: 52.23.158.127 *(changes on stop/start unless Elastic IP attached)*
 - **SSH**: `
 
-ssh -i ~/.ssh/iot-fleet-pipeline-key.pem ubuntu@13.222.190.240
+ssh -i ~/.ssh/iot-fleet-pipeline-key.pem ubuntu@54.236.21.107
 
 `
 - **Region**: us-east-1
