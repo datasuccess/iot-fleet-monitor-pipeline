@@ -1,0 +1,6 @@
+cluster_id,cluster_city,cluster_state,cluster_timezone,environment_type,manager_name,max_devices
+FACTORY_A,New York,NY,America/New_York,indoor_stable,Sarah Chen,20
+FACTORY_B,Los Angeles,CA,America/Los_Angeles,indoor_warm,Marcus Johnson,20
+WAREHOUSE_A,Chicago,IL,America/Chicago,semi_outdoor,Emily Rodriguez,20
+WAREHOUSE_B,Houston,TX,America/Chicago,semi_outdoor_humid,David Kim,20
+OUTDOOR,Seattle,WA,America/Los_Angeles,outdoor,Anna Petrov,20

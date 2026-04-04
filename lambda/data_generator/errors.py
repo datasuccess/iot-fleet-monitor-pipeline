@@ -7,7 +7,7 @@ from datetime import timedelta
 from data_generator.config import SENSOR_RANGES, ErrorProfile
 
 
-SENSOR_FIELDS = ["temperature", "humidity", "pressure", "battery_pct"]
+SENSOR_FIELDS = ["temperature", "humidity", "pressure", "battery_pct", "co2_level"]
 
 
 def inject_nulls(reading: dict, rate: float) -> dict:
@@ -25,11 +25,13 @@ def inject_out_of_range(reading: dict, rate: float) -> dict:
         "humidity": (-10.0, 150.0),
         "pressure": (800.0, 1200.0),
         "battery_pct": (-5.0, 110.0),
+        "co2_level": (100.0, 5000.0),
     }
     for field in SENSOR_FIELDS:
         if reading.get(field) is not None and random.random() < rate:
             low, high = oor_map[field]
-            limits = SENSOR_RANGES.get(field.replace("_pct", ""), {})
+            range_key = field.replace("_pct", "").replace("_level", "")
+            limits = SENSOR_RANGES.get(range_key, {})
             if random.random() < 0.5:
                 # Below range
                 reading[field] = round(random.uniform(low, limits.get("min", low)), 2)

@@ -16,6 +16,7 @@ SENSOR_RANGES = {
     "humidity": {"min": 10.0, "max": 95.0, "unit": "%"},
     "pressure": {"min": 950.0, "max": 1050.0, "unit": "hPa"},
     "battery": {"min": 0.0, "max": 100.0, "unit": "%"},
+    "co2": {"min": 300.0, "max": 2000.0, "unit": "ppm"},
 }
 
 # --- Random Walk Parameters ---
@@ -24,7 +25,11 @@ RANDOM_WALK = {
     "temperature": {"step_size": 0.5, "mean_reversion": 0.05},
     "humidity": {"step_size": 1.0, "mean_reversion": 0.03},
     "pressure": {"step_size": 0.3, "mean_reversion": 0.02},
+    "co2": {"step_size": 15.0, "mean_reversion": 0.04},
 }
+
+# Firmware versions that include the CO2 sensor
+CO2_FIRMWARE_VERSIONS = {"2.0.0", "2.1.0"}
 
 # Battery drains slowly, recharges at threshold
 BATTERY_DRAIN_RATE = 0.1  # % per reading

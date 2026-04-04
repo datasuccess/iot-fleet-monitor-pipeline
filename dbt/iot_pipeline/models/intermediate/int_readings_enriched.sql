@@ -32,6 +32,7 @@ enriched as (
         v.humidity,
         v.pressure,
         v.battery_pct,
+        v.co2_level,
         v.latitude,
         v.longitude,
         v.firmware_version,

@@ -28,6 +28,7 @@ select
     humidity,
     pressure,
     battery_pct,
+    co2_level,
     latitude,
     longitude,
     firmware_version,
@@ -41,6 +42,7 @@ select
         case when not is_humidity_valid then 'HUMIDITY_OUT_OF_RANGE' end,
         case when not is_pressure_valid then 'PRESSURE_OUT_OF_RANGE' end,
         case when not is_battery_valid then 'BATTERY_OUT_OF_RANGE' end,
+        case when not is_co2_valid then 'CO2_OUT_OF_RANGE' end,
         case when is_anomaly then 'ZSCORE_ANOMALY' end
     ) as rejection_reasons,
 

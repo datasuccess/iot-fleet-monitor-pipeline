@@ -19,6 +19,7 @@ class SensorReading:
     battery_pct: Optional[float] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    co2_level: Optional[float] = None  # ppm — only on firmware >= 2.0.0
     firmware_version: str = ""
     error_profile: str = ""
 

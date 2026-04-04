@@ -122,12 +122,13 @@
 - No separate implementation needed — our pipeline IS the ELT example
 
 ## Phase 11: Schema Evolution & Live Changes
-- [ ] Add `co2_level` sensor field to Lambda generator — simulate firmware update
+- [x] Add `co2_level` sensor field to Lambda generator — firmware >= 2.0.0 only
 - [ ] Add `device_alerts` source table — manual operator alerts
-- [ ] Add `dim_clusters` dimension — cluster metadata (city, timezone, manager)
-- [ ] Backfill strategy — handle historical data missing the new field
-- [ ] Migration scripts — ALTER TABLE, backwards-compatible dbt models
-- [ ] `EXPLAINED_SCHEMA_EVOLUTION.md` — How to evolve a live pipeline without downtime
+- [x] Add `dim_clusters` dimension — cluster metadata (city, timezone, manager)
+- [x] Backfill strategy — documented in EXPLAINED (NULL for historical, no reprocess needed)
+- [x] Migration scripts — backwards-compatible dbt models (TRY_CAST, NULL-safe validation)
+- [x] `EXPLAINED_SCHEMA_EVOLUTION.md` — How to evolve a live pipeline without downtime
+- [ ] **Verify**: Deploy Lambda, `dbt seed`, `dbt run`, confirm co2_level flows end-to-end
 
 ## Phase 12: Streamlit Dashboards
 - [x] **App 1: Fleet Monitor** — KPIs, quality trend, device health, GPS map, anomaly feed

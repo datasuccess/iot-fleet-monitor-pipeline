@@ -37,6 +37,7 @@ select
     humidity,
     pressure,
     battery_pct,
+    co2_level,
     latitude,
     longitude,
     firmware_version,

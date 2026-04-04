@@ -35,6 +35,9 @@ parsed as (
         try_cast(raw_data:pressure::varchar as float)             as pressure,
         try_cast(raw_data:battery_pct::varchar as float)          as battery_pct,
 
+        -- CO2 (firmware >= 2.0.0 only — NULL for older devices)
+        try_cast(raw_data:co2_level::varchar as float)            as co2_level,
+
         -- GPS
         try_cast(raw_data:latitude::varchar as float)             as latitude,
         try_cast(raw_data:longitude::varchar as float)            as longitude,

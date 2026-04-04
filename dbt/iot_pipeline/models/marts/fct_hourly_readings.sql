@@ -37,6 +37,11 @@ select
     -- Pressure stats
     avg(pressure) as avg_pressure,
 
+    -- CO2 stats (NULL for devices without CO2 sensor)
+    avg(co2_level) as avg_co2_level,
+    min(co2_level) as min_co2_level,
+    max(co2_level) as max_co2_level,
+
     -- Battery
     avg(battery_pct) as avg_battery_pct,
     min(battery_pct) as min_battery_pct,

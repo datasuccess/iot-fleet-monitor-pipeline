@@ -54,13 +54,21 @@ with_range_checks as (
             when d.battery_pct is null then false
             when d.battery_pct between t_bat.min_valid and t_bat.max_valid then true
             else false
-        end as is_battery_valid
+        end as is_battery_valid,
+
+        -- CO2 range check (NULL = no sensor, which is valid)
+        case
+            when d.co2_level is null then true
+            when d.co2_level between t_co2.min_valid and t_co2.max_valid then true
+            else false
+        end as is_co2_valid
 
     from deduped d
     left join thresholds t_temp on t_temp.sensor_type = 'temperature'
     left join thresholds t_hum on t_hum.sensor_type = 'humidity'
     left join thresholds t_pres on t_pres.sensor_type = 'pressure'
     left join thresholds t_bat on t_bat.sensor_type = 'battery'
+    left join thresholds t_co2 on t_co2.sensor_type = 'co2'
 ),
 
 with_zscores as (
@@ -109,6 +117,7 @@ final as (
          + case when not is_humidity_valid then 1 else 0 end
          + case when not is_pressure_valid then 1 else 0 end
          + case when not is_battery_valid then 1 else 0 end
+         + case when not is_co2_valid then 1 else 0 end
          + case when is_anomaly then 1 else 0 end
         ) as validation_error_count
     from with_zscores

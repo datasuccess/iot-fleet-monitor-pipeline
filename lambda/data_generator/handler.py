@@ -31,6 +31,7 @@ def _get_device_state(device) -> DeviceState:
             battery=100.0,
             base_lat=device.base_latitude,
             base_lon=device.base_longitude,
+            firmware_version=device.firmware_version,
         )
     return _device_states[device.device_id]
 

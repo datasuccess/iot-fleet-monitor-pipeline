@@ -1,6 +1,14 @@
 version: 2
 
 models:
+  - name: dim_clusters
+    description: "Cluster dimension — location, timezone, environment, manager"
+    columns:
+      - name: cluster_id
+        tests:
+          - not_null
+          - unique
+
   - name: dim_devices
     description: "Device dimension — one row per device with latest metadata"
     columns:

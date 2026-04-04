@@ -18,6 +18,7 @@ with validated as (
        or not is_humidity_valid
        or not is_pressure_valid
        or not is_battery_valid
+       or not is_co2_valid
     {% if is_incremental() %}
     and loaded_at > (select max(detected_at) from {{ this }})
     {% endif %}
@@ -113,6 +114,27 @@ anomalies as (
     from validated v
     left join thresholds t on t.sensor_type = 'battery'
     where not is_battery_valid
+
+    union all
+
+    -- CO2 anomalies
+    select
+        {{ dbt_utils.generate_surrogate_key(['reading_id', "'co2'"]) }} as anomaly_id,
+        device_id,
+        reading_ts as detected_at,
+        'out_of_range' as anomaly_type,
+        'co2' as sensor_type,
+        co2_level as observed_value,
+        t.min_valid as expected_min,
+        t.max_valid as expected_max,
+        null as zscore,
+        case
+            when co2_level < t.critical_low or co2_level > t.critical_high then 'critical'
+            else 'warning'
+        end as severity
+    from validated v
+    left join thresholds t on t.sensor_type = 'co2'
+    where not is_co2_valid
 )
 
 select * from anomalies
